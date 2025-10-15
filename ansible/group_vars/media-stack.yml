@@ -1,0 +1,6 @@
+---
+# Deployment paths
+media_stack_dir: /opt/media-stack
+
+# Base directory
+appdata_dir: /mnt/user/appdata

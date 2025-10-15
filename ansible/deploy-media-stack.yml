@@ -1,0 +1,8 @@
+---
+- name: Deploy Media Stack
+  hosts: media-stack
+  become: yes
+  gather_facts: yes
+
+  roles:
+    - media-stack
