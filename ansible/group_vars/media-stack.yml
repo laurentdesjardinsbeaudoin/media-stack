@@ -1,6 +1,16 @@
----
-# Deployment paths
-media_stack_dir: /opt/media-stack
+--- 
+# Application config and docker-compose deployment
+appdata_dir: /opt/media-stack
 
-# Base directory
-appdata_dir: /mnt/user/appdata
+# Media library (requires large disk)
+media_dir: /mnt/data0/appdata/data
+
+# Downloads directory (requires large disk)
+downloads_dir: /mnt/data0/appdata/downloads
+
+# Plex transcode directory (requires large disk - 10-50GB+)
+transcode_dir: /mnt/data0/appdata/transcode
+
+# qBitorrent
+lan_network: 192.168.2.0/24
+name_servers: 8.8.8.8,8.8.4.4,1.1.1.1,1.0.0.1

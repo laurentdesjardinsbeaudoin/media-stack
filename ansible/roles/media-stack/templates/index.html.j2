@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Media Stack Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+            padding: 40px 20px;
+        }
+        
+        .header h1 {
+            font-size: 48px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .header p {
+            font-size: 18px;
+            opacity: 0.9;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+        }
+        
+        .card h2 {
+            color: #333;
+            font-size: 24px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+        }
+        
+        .service-list {
+            list-style: none;
+        }
+        
+        .service-item {
+            margin: 12px 0;
+        }
+        
+        .service-link {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            text-decoration: none;
+            color: #333;
+            transition: background 0.2s;
+            border-left: 4px solid #667eea;
+        }
+        
+        .service-link:hover {
+            background: #667eea;
+            color: white;
+        }
+        
+        .service-name {
+            font-weight: 600;
+            font-size: 16px;
+        }
+        
+        .service-desc {
+            font-size: 13px;
+            color: #666;
+        }
+        
+        .service-link:hover .service-desc {
+            color: rgba(255,255,255,0.9);
+        }
+        
+        .service-port {
+            font-size: 12px;
+            background: #667eea;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-weight: 500;
+        }
+        
+        .service-link:hover .service-port {
+            background: white;
+            color: #667eea;
+        }
+        
+        .footer {
+            text-align: center;
+            color: white;
+            padding: 20px;
+            opacity: 0.8;
+            font-size: 14px;
+        }
+        
+        @media(max-width: 768px) {
+            .header h1 {
+                font-size: 32px;
+            }
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎬 Media Stack Dashboard</h1>
+            <p>Your Complete Media Management System</p>
+        </div>
+        
+        <div class="grid">
+            <div class="card">
+                <h2>🎭 Media & Streaming</h2>
+                <ul class="service-list">
+                    <li class="service-item">
+                        <a href="http://{{ ansible_host }}:32400/web" class="service-link">
+                            <div>
+                                <div class="service-name">Plex Media Server</div>
+                                <div class="service-desc">Stream your movies, TV shows & music</div>
+                            </div>
+                            <span class="service-port">:32400</span>
+                        </a>
+                    </li>
+                    <li class="service-item">
+                        <a href="http://{{ ansible_host }}:5055" class="service-link">
+                            <div>
+                                <div class="service-name">Overseerr</div>
+                                <div class="service-desc">Request & discover new content</div>
+                            </div>
+                            <span class="service-port">:5055</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+            
+            <div class="card">
+                <h2>📺 Content Management</h2>
+                <ul class="service-list">
+                    <li class="service-item">
+                        <a href="http://{{ ansible_host }}:8989" class="service-link">
+                            <div>
+                                <div class="service-name">Sonarr</div>
+                                <div class="service-desc">Manage TV shows & series</div>
+                            </div>
+                            <span class="service-port">:8989</span>
+                        </a>
+                    </li>
+                    <li class="service-item">
+                        <a href="http://{{ ansible_host }}:7878" class="service-link">
+                            <div>
+                                <div class="service-name">Radarr</div>
+                                <div class="service-desc">Manage movies collection</div>
+                            </div>
+                            <span class="service-port">:7878</span>
+                        </a>
+                    </li>
+                    <li class="service-item">
+                        <a href="http://{{ ansible_host }}:6767" class="service-link">
+                            <div>
+                                <div class="service-name">Bazarr</div>
+                                <div class="service-desc">Automatic subtitle downloads</div>
+                            </div>
+                            <span class="service-port">:6767</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+            
+            <div class="card">
+                <h2>🔍 Indexers & Downloads</h2>
+                <ul class="service-list">
+                    <li class="service-item">
+                        <a href="http://{{ ansible_host }}:9696" class="service-link">
+                            <div>
+                                <div class="service-name">Prowlarr</div>
+                                <div class="service-desc">Indexer management hub</div>
+                            </div>
+                            <span class="service-port">:9696</span>
+                        </a>
+                    </li>
+                    <li class="service-item">
+                        <a href="http://{{ ansible_host }}:9117" class="service-link">
+                            <div>
+                                <div class="service-name">Jackett</div>
+                                <div class="service-desc">Torrent indexer proxy</div>
+                            </div>
+                            <span class="service-port">:9117</span>
+                        </a>
+                    </li>
+                    <li class="service-item">
+                        <a href="http://{{ ansible_host }}:8080" class="service-link">
+                            <div>
+                                <div class="service-name">qBittorrent</div>
+                                <div class="service-desc">Torrent download client</div>
+                            </div>
+                            <span class="service-port">:8080</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+            
+            <div class="card">
+                <h2>⚙️ System & Monitoring</h2>
+                <ul class="service-list">
+                    <li class="service-item">
+                        <a href="http://{{ ansible_host }}:8404" class="service-link">
+                            <div>
+                                <div class="service-name">HAProxy Statistics</div>
+                                <div class="service-desc">Proxy health & performance</div>
+                            </div>
+                            <span class="service-port">:8404</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="footer">
+            Media Stack Dashboard • All systems operational
+        </div>
+    </div>
+</body>
+</html>

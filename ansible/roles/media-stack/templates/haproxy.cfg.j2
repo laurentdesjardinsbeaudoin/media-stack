@@ -1,0 +1,42 @@
+global
+    log stdout format raw local0
+    maxconn 4096
+
+defaults
+    log     global
+    mode    http
+    option  httplog
+    option  dontlognull
+    timeout connect 5000
+    timeout client  50000
+    timeout server  50000
+
+# Stats page
+listen stats
+    bind *:8404
+    stats enable
+    stats uri /
+    stats refresh 30s
+    stats show-legends
+    stats show-node
+
+# Frontend
+frontend http_front
+    bind *:80
+    
+    # Route to dashboard for root path
+    use_backend dashboard if { path / }
+    
+    # Redirects for other services
+    http-request redirect code 301 location http://{{ ansible_host }}:32400/web if { path_beg /plex }
+    http-request redirect code 301 location http://{{ ansible_host }}:8989 if { path_beg /sonarr }
+    http-request redirect code 301 location http://{{ ansible_host }}:7878 if { path_beg /radarr }
+    http-request redirect code 301 location http://{{ ansible_host }}:9696 if { path_beg /prowlarr }
+    http-request redirect code 301 location http://{{ ansible_host }}:6767 if { path_beg /bazarr }
+    http-request redirect code 301 location http://{{ ansible_host }}:5055 if { path_beg /overseerr }
+    http-request redirect code 301 location http://{{ ansible_host }}:9117 if { path_beg /jackett }
+    http-request redirect code 301 location http://{{ ansible_host }}:8080 if { path_beg /qbittorrent }
+
+# Backend for dashboard
+backend dashboard
+    server dashboard dashboard:80 check

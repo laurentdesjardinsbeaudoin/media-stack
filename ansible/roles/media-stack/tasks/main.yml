@@ -1,9 +1,9 @@
 ---
-- name: Ensure required packages are installed
+- name: Install docker-ce
   package:
     name:
-      - docker
-      - docker-compose
+      - docker-ce
+      - docker-compose-plugin
     state: present
 
 - name: Ensure Docker service is running
@@ -12,42 +12,113 @@
     state: started
     enabled: yes
 
-- name: Create media stack directory
-  file:
-    path: "{{ media_stack_dir }}"
-    state: directory
-    mode: '0755'
+- name: Load iptables kernel modules
+  shell: |
+    modprobe ip_tables || true
+    modprobe iptable_filter || true
+    modprobe iptable_nat || true
+    modprobe xt_conntrack || true
+  changed_when: false
 
-- name: Create all required mount point directories
-  file:
-    path: "{{ item }}"
-    state: directory
-    mode: '0755'
-  loop:
-    - "{{ appdata_dir }}/data"
-    - "{{ appdata_dir }}/downloads"
-    - "{{ appdata_dir }}/bazarr"
-    - "{{ appdata_dir }}/binhex-qbittorrentvpn"
-    - "{{ appdata_dir }}/jackett"
-    - "{{ appdata_dir }}/jackett/downloads"
-    - "{{ appdata_dir }}/overseerr"
-    - "{{ appdata_dir }}/Plex-Media-Server"
-    - "{{ appdata_dir }}/plex/transcode"
-    - "{{ appdata_dir }}/prowlarr"
-    - "{{ appdata_dir }}/radarr"
-    - "{{ appdata_dir }}/sonarr"
-
-- name: Deploy docker-compose.yml from template
-  template:
-    src: docker-compose.yml.j2
-    dest: "{{ media_stack_dir }}/docker-compose.yml"
+- name: Ensure iptables modules load on boot
+  copy:
+    content: |
+      ip_tables
+      iptable_filter
+      iptable_nat
+      xt_conntrack
+    dest: /etc/modules-load.d/iptables.conf
     mode: '0644'
 
-- name: Deploy media stack with docker compose
+- name: Start and enable firewalld
+  systemd:
+    name: firewalld
+    state: started
+    enabled: yes
+
+- name: Open firewall ports for media stack services
+  firewalld:
+    port: "{{ item }}"
+    permanent: yes
+    state: enabled
+    immediate: yes
+  loop:
+    - 80/tcp        # HAProxy
+    - 139/tcp       # Samba
+    - 445/tcp       # Samba
+    - 6767/tcp      # Bazarr
+    - 7878/tcp      # Radarr
+    - 8080/tcp      # qBittorrent
+    - 8081/tcp      # Dashboard
+    - 8404/tcp      # HAProxy Stats
+    - 8989/tcp      # Sonarr
+    - 9117/tcp      # Jackett
+    - 9696/tcp      # Prowlarr
+    - 5055/tcp      # Overseerr
+    - 32400/tcp     # Plex
+
+- name: Ensure base appdata directory exists
+  file:
+    path: "{{ appdata_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Ensure media directory exists
+  file:
+    path: "{{ media_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Ensure downloads directory exists
+  file:
+    path: "{{ downloads_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Ensure transcode directory exists
+  file:
+    path: "{{ transcode_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Create Plex directory
+  file:
+    path: "{{ appdata_dir }}/plex"
+    state: directory
+    mode: '0755'
+
+- name: Create dashboard directory
+  file:
+    path: "{{ appdata_dir }}/dashboard"
+    state: directory
+    mode: '0755'
+
+- name: Deploy dashboard HTML
+  template:
+    src: index.html.j2
+    dest: "{{ appdata_dir }}/dashboard/index.html"
+    mode: '0644'
+
+- name: Create haproxy config directory
+  file:
+    path: "{{ appdata_dir }}/haproxy"
+    state: directory
+    mode: '0755'
+
+- name: Deploy haproxy configuration
+  template:
+    src: haproxy.cfg.j2
+    dest: "{{ appdata_dir }}/haproxy/haproxy.cfg"
+    mode: '0644'
+
+- name: Copy docker-compose.yml 
+  template:
+    src: docker-compose.yml.j2
+    dest: "{{ appdata_dir }}/docker-compose.yml"
+    mode: '0644'
+
+- name: Deploy media stack 
   shell: docker compose up -d --force-recreate
   args:
-    chdir: "{{ media_stack_dir }}"
+    chdir: "{{ appdata_dir }}"
 
-- name: Display deployment status
-  debug:
-    msg: "Media stack deployed successfully!"

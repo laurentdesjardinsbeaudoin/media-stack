@@ -1,27 +1,90 @@
 ---
 services:
+  dashboard:
+    image: nginx:alpine
+    container_name: dashboard
+    volumes:
+      - {{ appdata_dir }}/dashboard:/usr/share/nginx/html:ro
+    restart: unless-stopped
+
+  haproxy:
+    image: haproxy:alpine
+    container_name: haproxy
+    ports:
+      - "80:80"
+      - "8404:8404"
+    volumes:
+      - {{ appdata_dir }}/haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+      - {{ appdata_dir }}/haproxy/index.html:/usr/local/etc/haproxy/index.html:ro
+    restart: unless-stopped
+    depends_on:
+      - dashboard
+      - bazarr
+      - jackett
+      - overseerr
+      - prowlarr
+      - radarr
+      - sonarr
+      - qbittorrentvpn
+
+  samba:
+    image: dperson/samba
+    container_name: samba
+    ports:
+      - "139:139"
+      - "445:445"
+    volumes:
+      - {{ appdata_dir }}:/appdata
+      - {{ media_dir }}:/media
+    environment:
+      - TZ=America/New_York
+      - USERID=99
+      - GROUPID=100
+      - SHARE=appdata;/appdata;yes;no;no;all;all;all
+    restart: unless-stopped
+
   bazarr:
     image: lscr.io/linuxserver/bazarr:latest
     container_name: bazarr
     ports:
       - "6767:6767"
     volumes:
-      - {{ appdata_dir }}/data:/movies
-      - {{ appdata_dir }}/data:/tv
+      - {{ media_dir }}:/movies
+      - {{ media_dir }}:/tv
       - {{ appdata_dir }}/bazarr:/config
     restart: unless-stopped
 
   qbittorrentvpn:
     image: binhex/arch-qbittorrentvpn:latest
     container_name: qbittorrentvpn
+    privileged: true
     ports:
       - "6881:6881"
       - "6881:6881/udp"
       - "8080:8080"
       - "8118:8118"
     volumes:
-      - {{ appdata_dir }}/downloads:/data
+      - {{ downloads_dir }}:/data
       - {{ appdata_dir }}/binhex-qbittorrentvpn:/config
+    environment:
+      - VPN_ENABLED=yes
+      - VPN_USER={{ vpn_user }}
+      - VPN_PASS={{ vpn_pass }}
+      - VPN_PROV=custom
+      - VPN_CLIENT=openvpn
+      - VPN_OPTIONS=
+      - STRICT_PORT_FORWARD=yes
+      - ENABLE_PRIVOXY=no
+      - ENABLE_STARTUP_SCRIPTS=no
+      - WEBUI_PORT=8080
+      - LAN_NETWORK={{ lan_network }}
+      - NAME_SERVERS={{ name_servers }}
+      - VPN_INPUT_PORTS=
+      - VPN_OUTPUT_PORTS=
+      - DEBUG=false
+      - UMASK=000
+      - PUID=99
+      - PGID=100
     restart: unless-stopped
 
   jackett:
@@ -47,10 +110,15 @@ services:
     image: plexinc/pms-docker:latest
     container_name: plex
     network_mode: host
+    devices:
+      - /dev/bus/usb:/dev/bus/usb
+    environment:
+      - TZ=America/New_York
+      - VERSION=docker
     volumes:
       - {{ appdata_dir }}/Plex-Media-Server:/config
-      - {{ appdata_dir }}/plex/transcode:/transcode
-      - {{ appdata_dir }}/data:/data
+      - {{ transcode_dir }}:/transcode
+      - {{ media_dir }}:/data
     restart: unless-stopped
 
   prowlarr:
@@ -68,11 +136,9 @@ services:
     ports:
       - "7878:7878"
     volumes:
-      - {{ appdata_dir }}/downloads:/config/qBittorrent/downloads/
       - {{ appdata_dir }}/radarr:/config
-      - {{ appdata_dir }}/data:/movies
-      - {{ appdata_dir }}/downloads:/downloads
-      - {{ appdata_dir }}/downloads:/data
+      - {{ media_dir }}:/movies
+      - {{ downloads_dir }}:/downloads
     restart: unless-stopped
 
   sonarr:
@@ -81,8 +147,7 @@ services:
     ports:
       - "8989:8989"
     volumes:
-      - {{ appdata_dir }}/data:/tv
-      - {{ appdata_dir }}/downloads:/downloads
-      - {{ appdata_dir }}/downloads:/data
       - {{ appdata_dir }}/sonarr:/config
+      - {{ media_dir }}:/tv
+      - {{ downloads_dir }}:/downloads
     restart: unless-stopped
