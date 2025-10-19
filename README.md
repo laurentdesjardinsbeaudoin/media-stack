@@ -4,7 +4,7 @@ Complete media server stack with Sonarr, Radarr, Prowlarr, Overseerr, Plex, qBit
 
 ## What This Playbook Configures
 
-❌ **NOT Configured (You Need to Do):**
+ **NOT Configured (You Need to Do):**
 - API keys for each service
 - Service interconnections (Prowlarr → Sonarr/Radarr, etc.)
 - Download client configuration
@@ -28,8 +28,12 @@ Complete media server stack with Sonarr, Radarr, Prowlarr, Overseerr, Plex, qBit
    ```
 
 2. **Server Requirements**
-   - Tested on alma9
+   - Rocky Linux 9 / AlmaLinux 9 (or similar RHEL-based)
    - Sufficient disk space for media and downloads
+   - SSH access with root or sudo privileges
+
+3. **Client Requirements** (your local machine)
+   - Docker and Docker Compose installed
 
 ## Quick Start
 
@@ -47,19 +51,18 @@ Edit `ansible/inventory/hosts.yml`:
 #### Build the Ansible Docker image:
 
 ```bash
-docker compose -f docker-compose.ansible.yml build
+docker compose -f docker-compose.yml build
 ```
 
 #### Run the Ansible playbook:
 
 ```bash
-docker compose -f docker-compose.ansible.yml run --rm ansible-shell
+docker compose -f docker-compose.yml run --rm ansible-shell
 ```
 
 Once inside the container:
 
 ```bash
-cd ansible
 ansible-playbook -i inventory/hosts.yml main.yml --ask-pass --ask-become
 ```
 

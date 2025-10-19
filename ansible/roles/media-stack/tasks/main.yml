@@ -1,4 +1,11 @@
 ---
+- name: Disable SELinux permanently
+  selinux:
+    state: disabled
+
+- name: Disable SELinux for current session
+  shell: setenforce 0
+
 - name: Install docker-ce
   package:
     name:
@@ -43,18 +50,20 @@
     state: enabled
     immediate: yes
   loop:
-    - 80/tcp        # HAProxy
+    - 80/tcp        # HAProxy HTTP
+    - 443/tcp       # HAProxy HTTPS
     - 139/tcp       # Samba
     - 445/tcp       # Samba
+    - 5055/tcp      # Overseerr
     - 6767/tcp      # Bazarr
     - 7878/tcp      # Radarr
     - 8080/tcp      # qBittorrent
     - 8081/tcp      # Dashboard
     - 8404/tcp      # HAProxy Stats
     - 8989/tcp      # Sonarr
+    - 9000/tcp      # Portainer
     - 9117/tcp      # Jackett
     - 9696/tcp      # Prowlarr
-    - 5055/tcp      # Overseerr
     - 32400/tcp     # Plex
 
 - name: Ensure base appdata directory exists
@@ -81,9 +90,9 @@
     state: directory
     mode: '0755'
 
-- name: Create Plex directory
+- name: Create portainer directory
   file:
-    path: "{{ appdata_dir }}/plex"
+    path: "{{ appdata_dir }}/portainer"
     state: directory
     mode: '0755'
 
@@ -105,6 +114,19 @@
     state: directory
     mode: '0755'
 
+- name: Generate self-signed SSL certificate for HAProxy
+  shell: |
+    if [ ! -f {{ appdata_dir }}/haproxy/cert.pem ]; then
+      openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
+        -keyout {{ appdata_dir }}/haproxy/cert.key \
+        -out {{ appdata_dir }}/haproxy/cert.crt \
+        -subj "/C=US/ST=State/L=City/O=Media Stack/CN={{ ansible_host }}"
+      cat {{ appdata_dir }}/haproxy/cert.crt {{ appdata_dir }}/haproxy/cert.key > {{ appdata_dir }}/haproxy/cert.pem
+      chmod 600 {{ appdata_dir }}/haproxy/cert.pem
+    fi
+  args:
+    creates: "{{ appdata_dir }}/haproxy/cert.pem"
+
 - name: Deploy haproxy configuration
   template:
     src: haproxy.cfg.j2
@@ -121,4 +143,13 @@
   shell: docker compose up -d --force-recreate
   args:
     chdir: "{{ appdata_dir }}"
+
+- name: Add hourly cron job to restart qBittorrent container
+  cron:
+    name: "Restart qBittorrent container"
+    minute: "0"
+    hour: "*"
+    user: root
+    job: "cd {{ appdata_dir }} && docker compose restart qbittorrentvpn >> /var/log/qbittorrent-restart.log 2>&1"
+    state: present
 

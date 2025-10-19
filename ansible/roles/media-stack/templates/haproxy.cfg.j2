@@ -20,9 +20,10 @@ listen stats
     stats show-legends
     stats show-node
 
-# Frontend
+# Frontend HTTP
 frontend http_front
     bind *:80
+    bind *:443 ssl crt /usr/local/etc/haproxy/cert.pem
     
     # Route to dashboard for root path
     use_backend dashboard if { path / }
@@ -36,6 +37,7 @@ frontend http_front
     http-request redirect code 301 location http://{{ ansible_host }}:5055 if { path_beg /overseerr }
     http-request redirect code 301 location http://{{ ansible_host }}:9117 if { path_beg /jackett }
     http-request redirect code 301 location http://{{ ansible_host }}:8080 if { path_beg /qbittorrent }
+    http-request redirect code 301 location http://{{ ansible_host }}:9000 if { path_beg /portainer }
 
 # Backend for dashboard
 backend dashboard

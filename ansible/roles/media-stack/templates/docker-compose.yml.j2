@@ -1,5 +1,15 @@
 ---
 services:
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: portainer
+    ports:
+      - "9000:9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - {{ appdata_dir }}/portainer:/data
+    restart: unless-stopped
+
   dashboard:
     image: nginx:alpine
     container_name: dashboard
@@ -12,10 +22,11 @@ services:
     container_name: haproxy
     ports:
       - "80:80"
+      - "443:443"
       - "8404:8404"
     volumes:
       - {{ appdata_dir }}/haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
-      - {{ appdata_dir }}/haproxy/index.html:/usr/local/etc/haproxy/index.html:ro
+      - {{ appdata_dir }}/haproxy/cert.pem:/usr/local/etc/haproxy/cert.pem:ro
     restart: unless-stopped
     depends_on:
       - dashboard
@@ -68,8 +79,6 @@ services:
       - {{ appdata_dir }}/binhex-qbittorrentvpn:/config
     environment:
       - VPN_ENABLED=yes
-      - VPN_USER={{ vpn_user }}
-      - VPN_PASS={{ vpn_pass }}
       - VPN_PROV=custom
       - VPN_CLIENT=openvpn
       - VPN_OPTIONS=

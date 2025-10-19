@@ -11,6 +11,9 @@ downloads_dir: /mnt/data0/appdata/downloads
 # Plex transcode directory (requires large disk - 10-50GB+)
 transcode_dir: /mnt/data0/appdata/transcode
 
-# qBitorrent
+# qBittorrent VPN Configuration
+# IMPORTANT: Set your VPN provider credentials below
+vpn_user: "CHANGE_ME"
+vpn_pass: "CHANGE_ME"
 lan_network: 192.168.2.0/24
 name_servers: 8.8.8.8,8.8.4.4,1.1.1.1,1.0.0.1

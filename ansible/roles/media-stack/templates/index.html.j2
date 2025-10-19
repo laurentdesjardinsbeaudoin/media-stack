@@ -244,6 +244,15 @@
                 <h2>⚙️ System & Monitoring</h2>
                 <ul class="service-list">
                     <li class="service-item">
+                        <a href="http://{{ ansible_host }}:9000/#!/3/docker/containers" class="service-link">
+                            <div>
+                                <div class="service-name">Portainer</div>
+                                <div class="service-desc">Docker container management</div>
+                            </div>
+                            <span class="service-port">:9000</span>
+                        </a>
+                    </li>
+                    <li class="service-item">
                         <a href="http://{{ ansible_host }}:8404" class="service-link">
                             <div>
                                 <div class="service-name">HAProxy Statistics</div>
