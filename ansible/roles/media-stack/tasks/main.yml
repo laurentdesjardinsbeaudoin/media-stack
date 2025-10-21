@@ -122,10 +122,17 @@
         -out {{ appdata_dir }}/haproxy/cert.crt \
         -subj "/C=US/ST=State/L=City/O=Media Stack/CN={{ ansible_host }}"
       cat {{ appdata_dir }}/haproxy/cert.crt {{ appdata_dir }}/haproxy/cert.key > {{ appdata_dir }}/haproxy/cert.pem
-      chmod 600 {{ appdata_dir }}/haproxy/cert.pem
+      chmod 644 {{ appdata_dir }}/haproxy/cert.pem
     fi
   args:
     creates: "{{ appdata_dir }}/haproxy/cert.pem"
+
+- name: Ensure certificate permissions are correct for Docker
+  file:
+    path: "{{ appdata_dir }}/haproxy/cert.pem"
+    owner: root
+    group: root
+    mode: '0644'
 
 - name: Deploy haproxy configuration
   template:
