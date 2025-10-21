@@ -157,6 +157,14 @@
     minute: "0"
     hour: "*"
     user: root
-    job: "cd {{ appdata_dir }} && docker compose restart qbittorrentvpn >> /var/log/qbittorrent-restart.log 2>&1"
+    job: "cd {{ appdata_dir }} && docker compose restart qbittorrent >> /var/log/qbittorrent-restart.log 2>&1"
     state: present
+
+- name: Fix SELinux context for Docker volumes after deployment
+  shell: |
+    # Set appropriate SELinux context for Docker volumes
+    chcon -R -t container_file_t {{ appdata_dir }} 2>/dev/null || true
+    # Restart HAProxy to ensure it can read the certificate
+    cd {{ appdata_dir }} && docker compose restart haproxy
+  failed_when: false
 

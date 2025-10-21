@@ -12,5 +12,5 @@ downloads_dir: /mnt/data0/appdata/downloads
 transcode_dir: /mnt/data0/appdata/transcode
 
 # qBittorrent VPN Configuration
-lan_network: 192.168.2.0/24
+lan_network: 192.168.0.0/16
 name_servers: 8.8.8.8,8.8.4.4,1.1.1.1,1.0.0.1
