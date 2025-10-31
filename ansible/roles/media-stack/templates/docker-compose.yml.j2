@@ -148,6 +148,7 @@ services:
       - {{ appdata_dir }}/radarr:/config
       - {{ media_dir }}:/movies
       - {{ downloads_dir }}:/downloads
+      - {{ media_dir }}:/data
     restart: unless-stopped
 
   sonarr:
@@ -159,4 +160,5 @@ services:
       - {{ appdata_dir }}/sonarr:/config
       - {{ media_dir }}:/tv
       - {{ downloads_dir }}:/downloads
+      - {{ media_dir }}:/data
     restart: unless-stopped
