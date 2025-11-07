@@ -84,18 +84,24 @@
   file:
     path: "{{ media_dir }}"
     state: directory
+    owner: 911
+    group: users
     mode: '0755'
 
 - name: Ensure downloads directory exists
   file:
     path: "{{ downloads_dir }}"
     state: directory
+    owner: 911
+    group: users
     mode: '0755'
 
 - name: Ensure transcode directory exists
   file:
     path: "{{ transcode_dir }}"
     state: directory
+    owner: 911
+    group: users
     mode: '0755'
 
 - name: Create portainer directory
