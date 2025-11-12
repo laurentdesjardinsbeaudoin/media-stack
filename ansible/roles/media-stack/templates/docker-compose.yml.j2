@@ -49,7 +49,7 @@ services:
       - {{ media_dir }}:/media
     environment:
       - TZ=America/New_York
-      - USERID=99
+      - USERID=991
       - GROUPID=100
       - SHARE=appdata;/appdata;yes;no;no;all;all;all
     restart: unless-stopped
@@ -92,7 +92,7 @@ services:
       - VPN_OUTPUT_PORTS=
       - DEBUG=false
       - UMASK=000
-      - PUID=99
+      - PUID=991
       - PGID=100
     restart: unless-stopped
 
