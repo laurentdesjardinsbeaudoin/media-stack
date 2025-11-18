@@ -47,12 +47,14 @@ services:
     volumes:
       - {{ appdata_dir }}:/appdata
       - {{ media_dir }}:/media
+      - {{ downloads_dir }}:/downloads
     environment:
       - TZ=America/New_York
       - USERID=991
       - GROUPID=100
-      - SHARE=appdata;/appdata;yes;no;yes
-      - SHARE2=media;/media;yes;no;yes
+      - SHARE=appdata;/appdata;yes;no;yes;all;none;none
+      - SHARE2=media;/media;yes;no;yes;all;none;none
+      - SHARE3=downloads;/downloads;yes;no;yes;all;none;none
       - SMB=true
     restart: unless-stopped
 
