@@ -51,7 +51,9 @@ services:
       - TZ=America/New_York
       - USERID=991
       - GROUPID=100
-      - SHARE=appdata;/appdata;yes;no;no;all;all;all
+      - SHARE=appdata;/appdata;yes;no;yes
+      - SHARE2=media;/media;yes;no;yes
+      - SMB=true
     restart: unless-stopped
 
   bazarr:
