@@ -63,7 +63,7 @@ docker compose -f docker-compose.yml run --rm ansible-shell
 Once inside the container:
 
 ```bash
-ansible-playbook -i inventory/hosts.yml main.yml --ask-pass --ask-become
+ansible-playbook -i inventory/hosts.yml main.yml --ask-pass --ask-become --ask-vault-pass
 ```
 
 The container automatically mounts your SSH keys from `$HOME/.ssh`.

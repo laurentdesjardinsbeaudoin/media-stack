@@ -50,7 +50,7 @@ services:
       - {{ downloads_dir }}:/downloads
     environment:
       - TZ=America/New_York
-      - USERID=991
+      - USERID=911
       - GROUPID=100
       - SHARE=appdata;/appdata;yes;no;yes;all;none;none
       - SHARE2=media;/media;yes;no;yes;all;none;none
@@ -67,6 +67,10 @@ services:
       - {{ media_dir }}:/movies
       - {{ media_dir }}:/tv
       - {{ appdata_dir }}/bazarr:/config
+    environment:
+      - PUID=911
+      - PGID=100
+      - TZ=America/New_York
     restart: unless-stopped
 
   qbittorrentvpn:
@@ -79,7 +83,7 @@ services:
       - "8080:8080"
       - "8118:8118"
     volumes:
-      - {{ downloads_dir }}:/data
+      - {{ downloads_dir }}:/downloads
       - {{ appdata_dir }}/binhex-qbittorrentvpn:/config
     environment:
       - VPN_ENABLED=yes
@@ -96,7 +100,7 @@ services:
       - VPN_OUTPUT_PORTS=
       - DEBUG=false
       - UMASK=000
-      - PUID=991
+      - PUID=911
       - PGID=100
     restart: unless-stopped
 
@@ -141,6 +145,10 @@ services:
       - "9696:9696"
     volumes:
       - {{ appdata_dir }}/prowlarr:/config
+    environment:
+      - PUID=911
+      - PGID=100
+      - TZ=America/New_York
     restart: unless-stopped
 
   radarr:
@@ -153,6 +161,10 @@ services:
       - {{ media_dir }}:/movies
       - {{ downloads_dir }}:/downloads
       - {{ media_dir }}:/data
+    environment:
+      - PUID=911
+      - PGID=100
+      - TZ=America/New_York
     restart: unless-stopped
 
   sonarr:
@@ -165,4 +177,8 @@ services:
       - {{ media_dir }}:/tv
       - {{ downloads_dir }}:/downloads
       - {{ media_dir }}:/data
+    environment:
+      - PUID=911
+      - PGID=100
+      - TZ=America/New_York
     restart: unless-stopped

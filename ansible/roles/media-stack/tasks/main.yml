@@ -84,23 +84,39 @@
   file:
     path: "{{ media_dir }}"
     state: directory
-    owner: 991
+    owner: 911
     group: 100
     mode: '0775'
+
+- name: Fix media directory permissions recursively
+  file:
+    path: "{{ media_dir }}"
+    owner: 911
+    group: 100
+    mode: '0775'
+    recurse: yes
 
 - name: Ensure downloads directory exists
   file:
     path: "{{ downloads_dir }}"
     state: directory
-    owner: 991
+    owner: 911
     group: 100
     mode: '0775'
+
+- name: Fix downloads directory permissions recursively
+  file:
+    path: "{{ downloads_dir }}"
+    owner: 911
+    group: 100
+    mode: '0775'
+    recurse: yes
 
 - name: Ensure transcode directory exists
   file:
     path: "{{ transcode_dir }}"
     state: directory
-    owner: 991
+    owner: 911
     group: 100
     mode: '0775'
 
