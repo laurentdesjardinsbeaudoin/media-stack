@@ -15,7 +15,7 @@
 #
 
 sonarr:
-  main:
+  sonarr-main:
     base_url: http://{{ ansible_host }}:8989
     api_key: {{ sonarr_api_key }}
     
@@ -112,7 +112,7 @@ sonarr:
             score: 500
 
 radarr:
-  main:
+  radarr-main:
     base_url: http://{{ ansible_host }}:7878
     api_key: {{ radarr_api_key }}
     
