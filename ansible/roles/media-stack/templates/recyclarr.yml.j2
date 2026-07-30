@@ -17,7 +17,7 @@
 sonarr:
   main:
     base_url: http://{{ ansible_host }}:8989
-    api_key: !env_var SONARR_API_KEY
+    api_key: {{ sonarr_api_key }}
     
     # Apply TRaSH Guides quality definitions
     quality_definition:
@@ -116,7 +116,7 @@ sonarr:
 radarr:
   main:
     base_url: http://{{ ansible_host }}:7878
-    api_key: !env_var RADARR_API_KEY
+    api_key: {{ radarr_api_key }}
     
     # Apply TRaSH Guides quality definitions
     quality_definition:

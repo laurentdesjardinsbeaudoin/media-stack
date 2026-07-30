@@ -433,9 +433,6 @@
 - name: Run Recyclarr sync
   shell: |
     docker exec recyclarr recyclarr sync
-  environment:
-    SONARR_API_KEY: "{{ sonarr_api_key }}"
-    RADARR_API_KEY: "{{ radarr_api_key }}"
   when: 
     - sonarr_api_key is defined
     - radarr_api_key is defined
