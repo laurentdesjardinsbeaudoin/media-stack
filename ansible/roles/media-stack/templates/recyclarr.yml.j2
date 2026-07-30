@@ -66,7 +66,7 @@ sonarr:
           - fbcb31d8dabd2a5294305873ba2cbe35  # DV (WEBDL) - often fake
           - 1c7d7b04b15cc53ea61204bebbcc1ee2  # HQ-WEBDL - fake releases
           - 4a3b087eea2ce012fcc1ce319259a3be  # Repack/Proper - can be fake
-        quality_profiles:
+        assign_scores_to:
           - name: HD+
             score: -10000  # Block completely
           - name: Ultra-HD
@@ -76,7 +76,7 @@ sonarr:
       - trash_ids:
           - b3b3a6ac74ecbd56bcdbefa4799fb9df  # AMZN (often fake on some trackers)
           - 7357cf5161efbf8c4d5d0c30b4815ee2  # Obfuscated - hidden file extensions
-        quality_profiles:
+        assign_scores_to:
           - name: HD+
             score: -5000
           - name: Ultra-HD
@@ -86,7 +86,7 @@ sonarr:
       - trash_ids:
           - d428eda85af1df8904b4bbe4fc2f537c  # Scene releases
           - 1c7d7b04b15cc53ea61204bebbcc1ee2  # Repack v2/v3 (legitimate)
-        quality_profiles:
+        assign_scores_to:
           - name: HD+
             score: 1500
           - name: Ultra-HD
@@ -95,7 +95,7 @@ sonarr:
       # Discourage 4K to save disk space (for HD+ profile only)
       - trash_ids:
           - 47435ece6b99a0b477caf360e79ba0bb  # 2160p resolution
-        quality_profiles:
+        assign_scores_to:
           - name: HD+
             score: -3000  # Strongly discourage 4K
       
@@ -105,7 +105,7 @@ sonarr:
           - 2f22d89048b01681dde8afe203bf2e95  # DTS-X
           - 417804f7f2c4308c1f4c5d380d4c4475  # ATMOS
           - 1af239278386be2919e1bcee0bde047e  # DD+ 5.1
-        quality_profiles:
+        assign_scores_to:
           - name: HD+
             score: 500
           - name: Ultra-HD
@@ -167,7 +167,7 @@ radarr:
           - 0a3f082873eb454bde444150b70253cc  # Extras
           - bfd8eb01832d646a0a89c4deb46f8564  # Upscaled
           - ff5bc9e8ce91d46c997ca3ac6994d6f8  # x265 (HD) - often fake/low quality
-        quality_profiles:
+        assign_scores_to:
           - name: HD+
             score: -10000  # Completely block
           - name: Ultra-HD
@@ -179,7 +179,7 @@ radarr:
           - ae9b7c9ebde1f3bd336a8cbd1ec4c5e5  # No-RlsGroup - suspicious
           - 7357cf5161efbf8c4d5d0c30b4815ee2  # Obfuscated
           - dc98083864ea246d05a42df0d05f81cc  # x265 (no HDR/DV)
-        quality_profiles:
+        assign_scores_to:
           - name: HD+
             score: -5000
           - name: Ultra-HD
@@ -192,7 +192,7 @@ radarr:
           - 5608c71bcebba0a5e666223bae8c9227  # HD Bluray Tier 03
           - c20f169ef63c5f40c2def54abaf4438e  # WEB Tier 01
           - 403816d65392c79236dcb6dd591aeda4  # WEB Tier 02
-        quality_profiles:
+        assign_scores_to:
           - name: HD+
             score: 1500
           - name: Ultra-HD
@@ -201,7 +201,7 @@ radarr:
       # Discourage 4K to save disk space (for HD+ profile only)
       - trash_ids:
           - b2be17d608fc88818940cd1833b0b24c  # 4K Resolution
-        quality_profiles:
+        assign_scores_to:
           - name: HD+
             score: -3000  # Strongly discourage 4K
       
@@ -215,7 +215,7 @@ radarr:
           - dfb86d5941bc9075d6af23b09c2aeecd  # HDR10
           - e61e28db95d22bedcadf030b8f156d96  # HDR
           - 2a4d9069cc1fe3242ff9bdaebed239bb  # HDR (Undefined)
-        quality_profiles:
+        assign_scores_to:
           - name: HD+
             score: -2000  # Discourage HDR (usually 4K)
           - name: Ultra-HD
@@ -228,7 +228,7 @@ radarr:
           - 417804f7f2c4308c1f4c5d380d4c4475  # ATMOS (undefined)
           - 1af239278386be2919e1bcee0bde047e  # DD+ 5.1
           - 185f1dd7264c4562b9022d963ac37424  # DD+
-        quality_profiles:
+        assign_scores_to:
           - name: HD+
             score: 500
           - name: Ultra-HD
