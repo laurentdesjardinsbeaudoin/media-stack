@@ -63,6 +63,7 @@ docker compose -f docker-compose.yml run --rm ansible-shell
 Once inside the container:
 
 ```bash
+cd ansible
 ansible-playbook -i inventory/hosts.yml main.yml --ask-pass --ask-become --ask-vault-pass
 ```
 
