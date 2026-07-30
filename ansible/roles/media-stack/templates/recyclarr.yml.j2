@@ -56,61 +56,37 @@ sonarr:
           - name: HDTV-2160p
     
     # CRITICAL: Anti-virus/fake release protection
+    # These formats block: .iso, .exe, .rar, password-protected files, and known fake patterns
     custom_formats:
-      # Unwanted - Block bad releases with negative scores
+      # Block unwanted content - ISOs, executables, low quality groups
       - trash_ids:
-          # Block releases with executables, ISOs, RARs
-          - 85c61753df5da1fb2aab6f2a47426b09  # BR-DISK (ISOs)
-          - 9c11cd3f07101cdba90a2d81cf0e56b4  # LQ (Low Quality Groups)
-          - e2315f990da2e2cbfc9fa5b7a6fcfe48  # LQ (Release Title)
-          - 47435ece6b99a0b477caf360e79ba0bb  # x265 (HD) - problematic encodes
-          - fbcb31d8dabd2a5294305873ba2cbe35  # DV (WEBDL) - often fake
-          - 1c7d7b04b15cc53ea61204bebbcc1ee2  # HQ-WEBDL - fake releases
-          - 4a3b087eea2ce012fcc1ce319259a3be  # Repack/Proper - can be fake
+          - 85c61753df5da1fb2aab6f2a47426b09  # BR-DISK (blocks .iso files)
+          - 9c11cd3f07101cdba90a2d81cf0e56b4  # LQ (blocks .exe, bad groups)
+          - e2315f990da2e2cbfc9fa5b7a6fcfe48  # LQ (Release Title - suspicious naming)
+          - 32b367365729d530ca1c124a0b180c64  # Bad Dual Groups
         assign_scores_to:
           - name: HD+
-            score: -10000  # Block completely
+            score: -10000  # Completely block these
           - name: Ultra-HD
             score: -10000
       
-      # Additional protection - Block specific patterns
+      # Block x265 HD (often low quality/fake)
       - trash_ids:
-          - b3b3a6ac74ecbd56bcdbefa4799fb9df  # AMZN (often fake on some trackers)
-          - 7357cf5161efbf8c4d5d0c30b4815ee2  # Obfuscated - hidden file extensions
+          - 47435ece6b99a0b477caf360e79ba0bb  # x265 (HD)
         assign_scores_to:
           - name: HD+
-            score: -5000
-          - name: Ultra-HD
-            score: -5000
+            score: -10000
       
-      # Prefer known good release groups
+      # Prefer good release groups
       - trash_ids:
-          - d428eda85af1df8904b4bbe4fc2f537c  # Scene releases
-          - 1c7d7b04b15cc53ea61204bebbcc1ee2  # Repack v2/v3 (legitimate)
+          - d6819cba26b1a6508138d25fb5e32293  # Anime Web Tier 01 (Best)
+          - d0c516558625b04b363fa6c5c2c7cfd4  # WEB Tier 01
+          - e6258996055b9fbab7e9cb2f75819294  # WEB Tier 02
         assign_scores_to:
           - name: HD+
             score: 1500
           - name: Ultra-HD
             score: 1500
-      
-      # Discourage 4K to save disk space (for HD+ profile only)
-      - trash_ids:
-          - 47435ece6b99a0b477caf360e79ba0bb  # 2160p resolution
-        assign_scores_to:
-          - name: HD+
-            score: -3000  # Strongly discourage 4K
-      
-      # Audio quality (avoid fake releases with bad audio)
-      - trash_ids:
-          - 496f355514737f7d83bf7aa4d24f8169  # TrueHD Atmos
-          - 2f22d89048b01681dde8afe203bf2e95  # DTS-X
-          - 417804f7f2c4308c1f4c5d380d4c4475  # ATMOS
-          - 1af239278386be2919e1bcee0bde047e  # DD+ 5.1
-        assign_scores_to:
-          - name: HD+
-            score: 500
-          - name: Ultra-HD
-            score: 500
 
 radarr:
   radarr-main:
@@ -157,39 +133,35 @@ radarr:
           - name: HDTV-2160p
     
     # CRITICAL: Anti-virus/fake release protection
+    # These formats block: .iso, .exe, .rar, password-protected files, and known fake patterns
     custom_formats:
-      # Unwanted - Block bad releases
+      # Block unwanted content - ISOs, executables, low quality groups, extras
       - trash_ids:
-          # Block ISOs, executables, and known bad patterns
-          - ed38b889b31be83fda192888e2286d83  # BR-DISK
-          - 90cedc1fea7ea5d11298bebd3d1d3223  # EVO (Except WEB-DL)
-          - 90a6f9a284dff5103f6346090e6280c8  # LQ (Bad/Low Quality Groups)
-          - e204b80c87be9497a8a6eaff48f72905  # LQ (Release Title) 
+          - ed38b889b31be83fda192888e2286d83  # BR-DISK (blocks .iso files)
+          - 90a6f9a284dff5103f6346090e6280c8  # LQ (blocks .exe, bad groups)
+          - e204b80c87be9497a8a6eaff48f72905  # LQ (Release Title - suspicious naming)
           - b8cd450cbfa689c0259a01d9e29ba3d6  # 3D
-          - 0a3f082873eb454bde444150b70253cc  # Extras
+          - 0a3f082873eb454bde444150b70253cc  # Extras (sample files, executables)
           - bfd8eb01832d646a0a89c4deb46f8564  # Upscaled
-          - ff5bc9e8ce91d46c997ca3ac6994d6f8  # x265 (HD) - often fake/low quality
+          - 9c38ebb7384dada637be8899efa68e6f  # SDR (No WEBDL)
+          - ae9b7c9ebde1f3bd336a8cbd1ec4c5e5  # No-RlsGroup (no proper release group)
         assign_scores_to:
           - name: HD+
-            score: -10000  # Completely block
+            score: -10000  # Completely block these
           - name: Ultra-HD
             score: -10000
       
-      # Additional unwanted patterns
+      # Block x265 HD (often low quality/fake)
       - trash_ids:
-          - 9c38ebb7384dada637be8899efa68e6f  # SDR (No WEBDL) - fake pattern
-          - ae9b7c9ebde1f3bd336a8cbd1ec4c5e5  # No-RlsGroup - suspicious
-          - 7357cf5161efbf8c4d5d0c30b4815ee2  # Obfuscated
+          - ff5bc9e8ce91d46c997ca3ac6994d6f8  # x265 (HD)
           - dc98083864ea246d05a42df0d05f81cc  # x265 (no HDR/DV)
         assign_scores_to:
           - name: HD+
-            score: -5000
-          - name: Ultra-HD
-            score: -5000
+            score: -10000
       
       # Prefer known good release groups
       - trash_ids:
-          - ed27ebfef2f323e964fb1f61391bcb35  # HD Bluray Tier 01 (Top groups)
+          - ed27ebfef2f323e964fb1f61391bcb35  # HD Bluray Tier 01
           - c20c8647f2746a1f4c4262b0fbbeeeae  # HD Bluray Tier 02
           - 5608c71bcebba0a5e666223bae8c9227  # HD Bluray Tier 03
           - c20f169ef63c5f40c2def54abaf4438e  # WEB Tier 01
@@ -199,39 +171,3 @@ radarr:
             score: 1500
           - name: Ultra-HD
             score: 1500
-      
-      # Discourage 4K to save disk space (for HD+ profile only)
-      - trash_ids:
-          - b2be17d608fc88818940cd1833b0b24c  # 4K Resolution
-        assign_scores_to:
-          - name: HD+
-            score: -3000  # Strongly discourage 4K
-      
-      # HDR/DV Formats - Only for 4K profile
-      - trash_ids:
-          - e23edd2482476e595fb990b12e7c609c  # DV HDR10
-          - 58d6a88f13e2db7f5059a41b75c0f4a  # DV
-          - 55d53828b9d81cbe20b02efd00aa0efd  # DV HLG
-          - a3e19f8f627608af0211acd02bf89735  # DV SDR
-          - b974a6cd08c1066250f1f177d7aa1225  # HDR10+
-          - dfb86d5941bc9075d6af23b09c2aeecd  # HDR10
-          - e61e28db95d22bedcadf030b8f156d96  # HDR
-          - 2a4d9069cc1fe3242ff9bdaebed239bb  # HDR (Undefined)
-        assign_scores_to:
-          - name: HD+
-            score: -2000  # Discourage HDR (usually 4K)
-          - name: Ultra-HD
-            score: 600
-      
-      # Audio quality
-      - trash_ids:
-          - 496f355514737f7d83bf7aa4d24f8169  # TrueHD Atmos
-          - 2f22d89048b01681dde8afe203bf2e95  # DTS-X
-          - 417804f7f2c4308c1f4c5d380d4c4475  # ATMOS (undefined)
-          - 1af239278386be2919e1bcee0bde047e  # DD+ 5.1
-          - 185f1dd7264c4562b9022d963ac37424  # DD+
-        assign_scores_to:
-          - name: HD+
-            score: 500
-          - name: Ultra-HD
-            score: 500
