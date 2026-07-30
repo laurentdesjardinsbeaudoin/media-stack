@@ -14,3 +14,8 @@ transcode_dir: /mnt/data0/appdata/transcode
 # qBittorrent VPN Configuration
 lan_network: 192.168.0.0/16
 name_servers: 8.8.8.8,8.8.4.4,1.1.1.1,1.0.0.1
+
+# API Keys (from vault)
+sonarr_api_key: "{{ v_sonarr_api_key }}"
+radarr_api_key: "{{ v_radarr_api_key }}"
+prowlarr_api_key: "{{ v_prowlarr_api_key }}"

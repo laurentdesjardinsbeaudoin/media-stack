@@ -198,3 +198,343 @@
     cd {{ appdata_dir }} && docker compose restart haproxy
   failed_when: false
 
+# Recyclarr Configuration
+- name: Create recyclarr config directory
+  file:
+    path: "{{ appdata_dir }}/recyclarr"
+    state: directory
+    owner: 911
+    group: 100
+    mode: '0755'
+
+- name: Deploy Recyclarr configuration
+  template:
+    src: recyclarr.yml.j2
+    dest: "{{ appdata_dir }}/recyclarr/recyclarr.yml"
+    owner: 911
+    group: 100
+    mode: '0644'
+
+# Wait for services to be ready before API configuration
+- name: Wait for Sonarr to be ready
+  uri:
+    url: "http://{{ ansible_host }}:8989/api/v3/system/status"
+    headers:
+      X-Api-Key: "{{ sonarr_api_key }}"
+    method: GET
+    status_code: 200
+  register: sonarr_ready
+  until: sonarr_ready.status == 200
+  retries: 30
+  delay: 10
+  when: sonarr_api_key is defined
+
+- name: Wait for Radarr to be ready
+  uri:
+    url: "http://{{ ansible_host }}:7878/api/v3/system/status"
+    headers:
+      X-Api-Key: "{{ radarr_api_key }}"
+    method: GET
+    status_code: 200
+  register: radarr_ready
+  until: radarr_ready.status == 200
+  retries: 30
+  delay: 10
+  when: radarr_api_key is defined
+
+- name: Wait for Prowlarr to be ready
+  uri:
+    url: "http://{{ ansible_host }}:9696/api/v1/system/status"
+    headers:
+      X-Api-Key: "{{ prowlarr_api_key }}"
+    method: GET
+    status_code: 200
+  register: prowlarr_ready
+  until: prowlarr_ready.status == 200
+  retries: 30
+  delay: 10
+  when: prowlarr_api_key is defined
+
+# Configure Sonarr via API
+- name: Check if Sonarr qBittorrent download client exists
+  uri:
+    url: "http://{{ ansible_host }}:8989/api/v3/downloadclient"
+    headers:
+      X-Api-Key: "{{ sonarr_api_key }}"
+    method: GET
+  register: sonarr_download_clients
+  when: sonarr_api_key is defined
+
+- name: Configure Sonarr download client (qBittorrent)
+  uri:
+    url: "http://{{ ansible_host }}:8989/api/v3/downloadclient"
+    method: POST
+    headers:
+      X-Api-Key: "{{ sonarr_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      enable: true
+      protocol: "torrent"
+      priority: 1
+      removeCompletedDownloads: true
+      removeFailedDownloads: true
+      name: "qBittorrent"
+      implementation: "QBittorrent"
+      configContract: "QBittorrentSettings"
+      fields:
+        - name: "host"
+          value: "{{ ansible_host }}"
+        - name: "port"
+          value: 8080
+        - name: "username"
+          value: "admin"
+        - name: "password"
+          value: "adminadmin"
+        - name: "category"
+          value: "sonarr"
+        - name: "recentTvPriority"
+          value: 0
+        - name: "olderTvPriority"
+          value: 0
+        - name: "initialState"
+          value: 0
+      tags: []
+    status_code: [201, 400]
+  when: 
+    - sonarr_api_key is defined
+    - sonarr_download_clients.json | selectattr('name', 'equalto', 'qBittorrent') | list | length == 0
+  register: sonarr_qbit_result
+  failed_when: 
+    - sonarr_qbit_result.status == 400
+    - "'already exists' not in (sonarr_qbit_result.json.message | default(''))"
+
+# Configure Radarr via API
+- name: Check if Radarr qBittorrent download client exists
+  uri:
+    url: "http://{{ ansible_host }}:7878/api/v3/downloadclient"
+    headers:
+      X-Api-Key: "{{ radarr_api_key }}"
+    method: GET
+  register: radarr_download_clients
+  when: radarr_api_key is defined
+
+- name: Configure Radarr download client (qBittorrent)
+  uri:
+    url: "http://{{ ansible_host }}:7878/api/v3/downloadclient"
+    method: POST
+    headers:
+      X-Api-Key: "{{ radarr_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      enable: true
+      protocol: "torrent"
+      priority: 1
+      removeCompletedDownloads: true
+      removeFailedDownloads: true
+      name: "qBittorrent"
+      implementation: "QBittorrent"
+      configContract: "QBittorrentSettings"
+      fields:
+        - name: "host"
+          value: "{{ ansible_host }}"
+        - name: "port"
+          value: 8080
+        - name: "username"
+          value: "admin"
+        - name: "password"
+          value: "adminadmin"
+        - name: "category"
+          value: "radarr"
+        - name: "recentMoviePriority"
+          value: 0
+        - name: "olderMoviePriority"
+          value: 0
+        - name: "initialState"
+          value: 0
+      tags: []
+    status_code: [201, 400]
+  when: 
+    - radarr_api_key is defined
+    - radarr_download_clients.json | selectattr('name', 'equalto', 'qBittorrent') | list | length == 0
+  register: radarr_qbit_result
+  failed_when: 
+    - radarr_qbit_result.status == 400
+    - "'already exists' not in (radarr_qbit_result.json.message | default(''))"
+
+# Configure Sonarr to prefer releases with more seeders
+- name: Get Sonarr indexer config
+  uri:
+    url: "http://{{ ansible_host }}:8989/api/v3/config/indexer"
+    headers:
+      X-Api-Key: "{{ sonarr_api_key }}"
+    method: GET
+  register: sonarr_indexer_config
+  when: sonarr_api_key is defined
+
+- name: Configure Sonarr indexer preferences (prefer more seeders)
+  uri:
+    url: "http://{{ ansible_host }}:8989/api/v3/config/indexer/{{ sonarr_indexer_config.json.id }}"
+    method: PUT
+    headers:
+      X-Api-Key: "{{ sonarr_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      id: "{{ sonarr_indexer_config.json.id }}"
+      minimumAge: 0
+      retention: 0
+      maximumSize: 0
+      rssSyncInterval: 60
+      preferIndexerFlags: true
+      availabilityDelay: 0
+      allowHardcodedSubs: true
+      whitelistedHardcodedSubs: ""
+    status_code: [200, 202]
+  when: 
+    - sonarr_api_key is defined
+    - sonarr_indexer_config.json is defined
+
+# Configure Radarr to prefer releases with more seeders
+- name: Get Radarr indexer config
+  uri:
+    url: "http://{{ ansible_host }}:7878/api/v3/config/indexer"
+    headers:
+      X-Api-Key: "{{ radarr_api_key }}"
+    method: GET
+  register: radarr_indexer_config
+  when: radarr_api_key is defined
+
+- name: Configure Radarr indexer preferences (prefer more seeders)
+  uri:
+    url: "http://{{ ansible_host }}:7878/api/v3/config/indexer/{{ radarr_indexer_config.json.id }}"
+    method: PUT
+    headers:
+      X-Api-Key: "{{ radarr_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      id: "{{ radarr_indexer_config.json.id }}"
+      minimumAge: 0
+      retention: 0
+      maximumSize: 0
+      rssSyncInterval: 60
+      preferIndexerFlags: true
+      availabilityDelay: 0
+      allowHardcodedSubs: true
+      whitelistedHardcodedSubs: ""
+    status_code: [200, 202]
+  when: 
+    - radarr_api_key is defined
+    - radarr_indexer_config.json is defined
+
+# Run Recyclarr sync
+- name: Run Recyclarr sync
+  shell: |
+    docker exec recyclarr recyclarr sync
+  environment:
+    SONARR_API_KEY: "{{ sonarr_api_key }}"
+    RADARR_API_KEY: "{{ radarr_api_key }}"
+  when: 
+    - sonarr_api_key is defined
+    - radarr_api_key is defined
+  register: recyclarr_sync
+  failed_when: false
+
+- name: Display Recyclarr sync result
+  debug:
+    msg: "{{ recyclarr_sync.stdout_lines }}"
+  when: recyclarr_sync.stdout_lines is defined
+
+# Add daily Recyclarr sync cron job
+- name: Add daily cron job to sync Recyclarr
+  cron:
+    name: "Sync Recyclarr configuration"
+    minute: "0"
+    hour: "6"
+    user: root
+    job: "cd {{ appdata_dir }} && docker exec recyclarr recyclarr sync >> /var/log/recyclarr-sync.log 2>&1"
+    state: present
+
+# Prowlarr App Sync - Auto-configure Sonarr and Radarr in Prowlarr
+- name: Check if Sonarr app exists in Prowlarr
+  uri:
+    url: "http://{{ ansible_host }}:9696/api/v1/applications"
+    headers:
+      X-Api-Key: "{{ prowlarr_api_key }}"
+    method: GET
+  register: prowlarr_apps
+  when: prowlarr_api_key is defined
+
+- name: Add Sonarr to Prowlarr applications
+  uri:
+    url: "http://{{ ansible_host }}:9696/api/v1/applications"
+    method: POST
+    headers:
+      X-Api-Key: "{{ prowlarr_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      name: "Sonarr"
+      syncLevel: "addOnly"
+      implementation: "Sonarr"
+      configContract: "SonarrSettings"
+      fields:
+        - name: "baseUrl"
+          value: "http://{{ ansible_host }}:8989"
+        - name: "apiKey"
+          value: "{{ sonarr_api_key }}"
+        - name: "syncCategories"
+          value: [5000, 5010, 5020, 5030, 5040, 5045, 5050, 5090]
+      tags: []
+    status_code: [201, 400]
+  when: 
+    - prowlarr_api_key is defined
+    - sonarr_api_key is defined
+    - prowlarr_apps.json | selectattr('name', 'equalto', 'Sonarr') | list | length == 0
+  register: prowlarr_sonarr_result
+  failed_when: 
+    - prowlarr_sonarr_result.status == 400
+    - "'already exists' not in (prowlarr_sonarr_result.json[0].errorMessage | default(''))"
+
+- name: Add Radarr to Prowlarr applications
+  uri:
+    url: "http://{{ ansible_host }}:9696/api/v1/applications"
+    method: POST
+    headers:
+      X-Api-Key: "{{ prowlarr_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      name: "Radarr"
+      syncLevel: "addOnly"
+      implementation: "Radarr"
+      configContract: "RadarrSettings"
+      fields:
+        - name: "baseUrl"
+          value: "http://{{ ansible_host }}:7878"
+        - name: "apiKey"
+          value: "{{ radarr_api_key }}"
+        - name: "syncCategories"
+          value: [2000, 2010, 2020, 2030, 2040, 2045, 2050, 2060, 2070, 2080, 2090]
+      tags: []
+    status_code: [201, 400]
+  when: 
+    - prowlarr_api_key is defined
+    - radarr_api_key is defined
+    - prowlarr_apps.json | selectattr('name', 'equalto', 'Radarr') | list | length == 0
+  register: prowlarr_radarr_result
+  failed_when: 
+    - prowlarr_radarr_result.status == 400
+    - "'already exists' not in (prowlarr_radarr_result.json[0].errorMessage | default(''))"
+
+- name: Display Prowlarr sync status
+  debug:
+    msg: "Prowlarr apps configured - Indexers will auto-sync to Sonarr and Radarr"
+  when: 
+    - prowlarr_api_key is defined
+    - sonarr_api_key is defined
+    - radarr_api_key is defined
+
+

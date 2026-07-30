@@ -1,0 +1,239 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/recyclarr/recyclarr/master/schemas/config-schema.json
+#
+# Recyclarr Configuration
+# 
+# What this handles:
+#   - Quality profiles (prefer 1080p over 4K to save disk space)
+#   - Custom formats (block fake releases, prefer good groups)
+#   - Anti-virus protection (block ISOs, executables, suspicious releases)
+#   - Resolution preferences (discourage 4K with negative scores)
+#
+# What Sonarr/Radarr handle automatically:
+#   - Seeder/peer prioritization (automatically prefers releases with more seeders)
+#   - Indexer scoring and reliability
+#   - Failed download handling
+#
+
+sonarr:
+  main:
+    base_url: http://{{ ansible_host }}:8989
+    api_key: !env_var SONARR_API_KEY
+    
+    # Apply TRaSH Guides quality definitions
+    quality_definition:
+      type: series
+    
+    # Quality profiles - HD prioritized to save disk space
+    quality_profiles:
+      - name: HD+
+        reset_unmatched_scores:
+          enabled: true
+        upgrade:
+          allowed: true
+          until_quality: Bluray-1080p  # Stop at 1080p, don't upgrade to 4K
+          until_score: 10000
+        min_format_score: 0
+        quality_sort: top
+        qualities:
+          - name: Bluray-1080p
+          - name: WEB 1080p
+          - name: HDTV-1080p
+          # 4K formats allowed as fallback only
+          - name: Bluray-2160p
+          - name: WEB 2160p
+          - name: HDTV-2160p
+      
+      - name: Ultra-HD
+        reset_unmatched_scores:
+          enabled: true
+        upgrade:
+          allowed: false  # Don't upgrade if you have limited space
+        until_quality: Bluray-2160p
+        until_score: 10000
+        min_format_score: 0
+        qualities:
+          - name: Bluray-2160p
+          - name: WEB 2160p
+          - name: HDTV-2160p
+    
+    # CRITICAL: Anti-virus/fake release protection
+    custom_formats:
+      # Unwanted - Block bad releases with negative scores
+      - trash_ids:
+          # Block releases with executables, ISOs, RARs
+          - 85c61753df5da1fb2aab6f2a47426b09  # BR-DISK (ISOs)
+          - 9c11cd3f07101cdba90a2d81cf0e56b4  # LQ (Low Quality Groups)
+          - e2315f990da2e2cbfc9fa5b7a6fcfe48  # LQ (Release Title)
+          - 47435ece6b99a0b477caf360e79ba0bb  # x265 (HD) - problematic encodes
+          - fbcb31d8dabd2a5294305873ba2cbe35  # DV (WEBDL) - often fake
+          - 1c7d7b04b15cc53ea61204bebbcc1ee2  # HQ-WEBDL - fake releases
+          - 4a3b087eea2ce012fcc1ce319259a3be  # Repack/Proper - can be fake
+        quality_profiles:
+          - name: HD+
+            score: -10000  # Block completely
+          - name: Ultra-HD
+            score: -10000
+      
+      # Additional protection - Block specific patterns
+      - trash_ids:
+          - b3b3a6ac74ecbd56bcdbefa4799fb9df  # AMZN (often fake on some trackers)
+          - 7357cf5161efbf8c4d5d0c30b4815ee2  # Obfuscated - hidden file extensions
+        quality_profiles:
+          - name: HD+
+            score: -5000
+          - name: Ultra-HD
+            score: -5000
+      
+      # Prefer known good release groups
+      - trash_ids:
+          - d428eda85af1df8904b4bbe4fc2f537c  # Scene releases
+          - 1c7d7b04b15cc53ea61204bebbcc1ee2  # Repack v2/v3 (legitimate)
+        quality_profiles:
+          - name: HD+
+            score: 1500
+          - name: Ultra-HD
+            score: 1500
+      
+      # Discourage 4K to save disk space (for HD+ profile only)
+      - trash_ids:
+          - 47435ece6b99a0b477caf360e79ba0bb  # 2160p resolution
+        quality_profiles:
+          - name: HD+
+            score: -3000  # Strongly discourage 4K
+      
+      # Audio quality (avoid fake releases with bad audio)
+      - trash_ids:
+          - 496f355514737f7d83bf7aa4d24f8169  # TrueHD Atmos
+          - 2f22d89048b01681dde8afe203bf2e95  # DTS-X
+          - 417804f7f2c4308c1f4c5d380d4c4475  # ATMOS
+          - 1af239278386be2919e1bcee0bde047e  # DD+ 5.1
+        quality_profiles:
+          - name: HD+
+            score: 500
+          - name: Ultra-HD
+            score: 500
+
+radarr:
+  main:
+    base_url: http://{{ ansible_host }}:7878
+    api_key: !env_var RADARR_API_KEY
+    
+    # Apply TRaSH Guides quality definitions
+    quality_definition:
+      type: movie
+    
+    # Quality profiles - HD prioritized to save disk space
+    quality_profiles:
+      - name: HD+
+        reset_unmatched_scores:
+          enabled: true
+        upgrade:
+          allowed: true
+          until_quality: Bluray-1080p  # Stop at 1080p, don't upgrade to 4K
+          until_score: 10000
+        min_format_score: 0
+        quality_sort: top
+        qualities:
+          - name: Bluray-1080p
+          - name: Remux-1080p
+          - name: WEB 1080p
+          - name: HDTV-1080p
+          # 4K formats listed last (lower priority)
+          - name: Bluray-2160p
+          - name: Remux-2160p
+          - name: WEB 2160p
+          - name: HDTV-2160p
+      
+      - name: Ultra-HD
+        reset_unmatched_scores:
+          enabled: true
+        upgrade:
+          allowed: false  # Don't upgrade if you have limited space
+        until_quality: Bluray-2160p
+        until_score: 10000
+        min_format_score: 0
+        qualities:
+          - name: Bluray-2160p
+          - name: Remux-2160p
+          - name: WEB 2160p
+          - name: HDTV-2160p
+    
+    # CRITICAL: Anti-virus/fake release protection
+    custom_formats:
+      # Unwanted - Block bad releases
+      - trash_ids:
+          # Block ISOs, executables, and known bad patterns
+          - ed38b889b31be83fda192888e2286d83  # BR-DISK
+          - 90cedc1fea7ea5d11298bebd3d1d3223  # EVO (Except WEB-DL)
+          - 90a6f9a284dff5103f6346090e6280c8  # LQ (Bad/Low Quality Groups)
+          - e204b80c87be9497a8a6eaff48f72905  # LQ (Release Title) 
+          - b8cd450cbfa689c0259a01d9e29ba3d6  # 3D
+          - 0a3f082873eb454bde444150b70253cc  # Extras
+          - bfd8eb01832d646a0a89c4deb46f8564  # Upscaled
+          - ff5bc9e8ce91d46c997ca3ac6994d6f8  # x265 (HD) - often fake/low quality
+        quality_profiles:
+          - name: HD+
+            score: -10000  # Completely block
+          - name: Ultra-HD
+            score: -10000
+      
+      # Additional unwanted patterns
+      - trash_ids:
+          - 9c38ebb7384dada637be8899efa68e6f  # SDR (No WEBDL) - fake pattern
+          - ae9b7c9ebde1f3bd336a8cbd1ec4c5e5  # No-RlsGroup - suspicious
+          - 7357cf5161efbf8c4d5d0c30b4815ee2  # Obfuscated
+          - dc98083864ea246d05a42df0d05f81cc  # x265 (no HDR/DV)
+        quality_profiles:
+          - name: HD+
+            score: -5000
+          - name: Ultra-HD
+            score: -5000
+      
+      # Prefer known good release groups
+      - trash_ids:
+          - ed27ebfef2f323e964fb1f61391bcb35  # HD Bluray Tier 01 (Top groups)
+          - c20c8647f2746a1f4c4262b0fbbeeeae  # HD Bluray Tier 02
+          - 5608c71bcebba0a5e666223bae8c9227  # HD Bluray Tier 03
+          - c20f169ef63c5f40c2def54abaf4438e  # WEB Tier 01
+          - 403816d65392c79236dcb6dd591aeda4  # WEB Tier 02
+        quality_profiles:
+          - name: HD+
+            score: 1500
+          - name: Ultra-HD
+            score: 1500
+      
+      # Discourage 4K to save disk space (for HD+ profile only)
+      - trash_ids:
+          - b2be17d608fc88818940cd1833b0b24c  # 4K Resolution
+        quality_profiles:
+          - name: HD+
+            score: -3000  # Strongly discourage 4K
+      
+      # HDR/DV Formats - Only for 4K profile
+      - trash_ids:
+          - e23edd2482476e595fb990b12e7c609c  # DV HDR10
+          - 58d6a88f13e2db7f5059a41b75c0f4a  # DV
+          - 55d53828b9d81cbe20b02efd00aa0efd  # DV HLG
+          - a3e19f8f627608af0211acd02bf89735  # DV SDR
+          - b974a6cd08c1066250f1f177d7aa1225  # HDR10+
+          - dfb86d5941bc9075d6af23b09c2aeecd  # HDR10
+          - e61e28db95d22bedcadf030b8f156d96  # HDR
+          - 2a4d9069cc1fe3242ff9bdaebed239bb  # HDR (Undefined)
+        quality_profiles:
+          - name: HD+
+            score: -2000  # Discourage HDR (usually 4K)
+          - name: Ultra-HD
+            score: 600
+      
+      # Audio quality
+      - trash_ids:
+          - 496f355514737f7d83bf7aa4d24f8169  # TrueHD Atmos
+          - 2f22d89048b01681dde8afe203bf2e95  # DTS-X
+          - 417804f7f2c4308c1f4c5d380d4c4475  # ATMOS (undefined)
+          - 1af239278386be2919e1bcee0bde047e  # DD+ 5.1
+          - 185f1dd7264c4562b9022d963ac37424  # DD+
+        quality_profiles:
+          - name: HD+
+            score: 500
+          - name: Ultra-HD
+            score: 500

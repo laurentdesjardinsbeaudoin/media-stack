@@ -182,3 +182,13 @@ services:
       - PGID=100
       - TZ=America/New_York
     restart: unless-stopped
+
+  recyclarr:
+    image: ghcr.io/recyclarr/recyclarr:latest
+    container_name: recyclarr
+    user: 911:100
+    volumes:
+      - {{ appdata_dir }}/recyclarr:/config
+    environment:
+      - TZ=America/New_York
+    restart: unless-stopped

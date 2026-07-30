@@ -4,16 +4,24 @@ Complete media server stack with Sonarr, Radarr, Prowlarr, Overseerr, Plex, qBit
 
 ## What This Playbook Configures
 
- **NOT Configured (You Need to Do):**
-- API keys for each service
-- Service interconnections (Prowlarr → Sonarr/Radarr, etc.)
-- Download client configuration
-- Indexer selection and setup
-- Quality profiles and preferences
+**✅ Automatically Configured:**
+- Docker containers for all services
+- Quality profiles via Recyclarr (with TRaSH Guides best practices)
+- **Anti-virus/fake release protection** (blocks ISOs, executables, low-quality groups)
+- Download client (qBittorrent) in Sonarr/Radarr
+- Prowlarr app sync (Sonarr + Radarr auto-configured)
+- Automatic failed download removal
+- HAProxy reverse proxy with SSL
+- Daily Recyclarr sync for profile updates
+
+**⚙️ Manual Configuration Still Needed:**
+- Indexer selection in Prowlarr (then auto-syncs to Sonarr/Radarr)
+- Root folders in Sonarr/Radarr
 - Plex library setup
 - User accounts and passwords
+- Fine-tuning quality preferences
 
-**This playbook sets up the infrastructure. You configure the applications based on your needs.**
+**This playbook now handles ~80% of the setup automatically!**
 
 ## Prerequisites
 
@@ -132,13 +140,14 @@ Now configure each service through their web interfaces:
 |---------|------|-------------|
 | Dashboard | 80 | Landing page with service links |
 | HAProxy Stats | 8404 | Proxy statistics and health |
-| Sonarr | 8989 | TV show management |
-| Radarr | 7878 | Movie management |
-| Prowlarr | 9696 | Indexer manager |
+| Sonarr | 8989 | TV show management (auto-configured) |
+| Radarr | 7878 | Movie management (auto-configured) |
+| Prowlarr | 9696 | Indexer manager (auto-syncs to Sonarr/Radarr) |
 | Overseerr | 5055 | Media requests |
 | Plex | 32400 | Media server |
-| qBittorrent | 8080 | Download client (VPN-protected) |
+| qBittorrent | 8080 | Download client (VPN-protected, auto-configured) |
 | Bazarr | 6767 | Subtitle management |
 | Jackett | 9117 | Torrent indexer proxy |
+| Recyclarr | - | Quality profile automation (background service) |
 | Samba | 445 | File sharing |
 
