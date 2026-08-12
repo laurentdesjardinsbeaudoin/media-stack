@@ -36,11 +36,11 @@ sonarr:
         quality_sort: top
         qualities:
           - name: Bluray-1080p
-          - name: WEB 1080p
+          - name: WEBDL-1080p
           - name: HDTV-1080p
           # 4K formats listed last (lower priority, fallback only)
           - name: Bluray-2160p
-          - name: WEB 2160p
+          - name: WEBDL-2160p
           - name: HDTV-2160p
       
       - name: Ultra-HD
@@ -52,7 +52,7 @@ sonarr:
         min_format_score: 0
         qualities:
           - name: Bluray-2160p
-          - name: WEB 2160p
+          - name: WEBDL-2160p
           - name: HDTV-2160p
     
     # CRITICAL: Anti-virus/fake release protection
@@ -68,13 +68,6 @@ sonarr:
           - name: HD+
             score: -10000  # Completely block these
           - name: Ultra-HD
-            score: -10000
-      
-      # Block x265 HD (often low quality/fake)
-      - trash_ids:
-          - 47435ece6b99a0b477caf360e79ba0bb  # x265 (HD)
-        assign_scores_to:
-          - name: HD+
             score: -10000
       
       # Prefer good release groups
@@ -111,12 +104,12 @@ radarr:
         qualities:
           - name: Bluray-1080p
           - name: Remux-1080p
-          - name: WEB 1080p
+          - name: WEBDL-1080p
           - name: HDTV-1080p
           # 4K formats listed last (lower priority, fallback only)
           - name: Bluray-2160p
           - name: Remux-2160p
-          - name: WEB 2160p
+          - name: WEBDL-2160p
           - name: HDTV-2160p
       
       - name: Ultra-HD
@@ -129,7 +122,7 @@ radarr:
         qualities:
           - name: Bluray-2160p
           - name: Remux-2160p
-          - name: WEB 2160p
+          - name: WEBDL-2160p
           - name: HDTV-2160p
     
     # CRITICAL: Anti-virus/fake release protection
@@ -143,20 +136,11 @@ radarr:
           - b8cd450cbfa689c0259a01d9e29ba3d6  # 3D
           - 0a3f082873eb454bde444150b70253cc  # Extras (sample files, executables)
           - bfd8eb01832d646a0a89c4deb46f8564  # Upscaled
-          - 9c38ebb7384dada637be8899efa68e6f  # SDR (No WEBDL)
           - ae9b7c9ebde1f3bd336a8cbd1ec4c5e5  # No-RlsGroup (no proper release group)
         assign_scores_to:
           - name: HD+
             score: -10000  # Completely block these
           - name: Ultra-HD
-            score: -10000
-      
-      # Block x265 HD (often low quality/fake)
-      - trash_ids:
-          - ff5bc9e8ce91d46c997ca3ac6994d6f8  # x265 (HD)
-          - dc98083864ea246d05a42df0d05f81cc  # x265 (no HDR/DV)
-        assign_scores_to:
-          - name: HD+
             score: -10000
       
       # Prefer known good release groups
