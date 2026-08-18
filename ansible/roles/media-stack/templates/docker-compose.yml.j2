@@ -192,3 +192,20 @@ services:
     environment:
       - TZ=America/New_York
     restart: unless-stopped
+
+  malware-monitor:
+    image: alpine:latest
+    container_name: malware-monitor
+    volumes:
+      - {{ downloads_dir }}:{{ downloads_dir }}
+      - {{ appdata_dir }}/malware-monitor:/config
+    environment:
+      - TZ=America/New_York
+    command: >
+      sh -c "apk add --no-cache bash curl jq &&
+             chmod +x /config/malware-monitor.sh &&
+             /config/malware-monitor.sh"
+    restart: unless-stopped
+    depends_on:
+      - sonarr
+      - radarr

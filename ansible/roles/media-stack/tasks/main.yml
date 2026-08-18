@@ -215,6 +215,19 @@
     group: 100
     mode: '0644'
 
+# Malware Monitor Configuration
+- name: Create malware-monitor config directory
+  file:
+    path: "{{ appdata_dir }}/malware-monitor"
+    state: directory
+    mode: '0755'
+
+- name: Deploy Malware Monitor script
+  template:
+    src: exe-monitor.sh.j2
+    dest: "{{ appdata_dir }}/malware-monitor/malware-monitor.sh"
+    mode: '0755'
+
 # Wait for services to be ready before API configuration
 - name: Wait for Sonarr to be ready
   uri:
@@ -428,6 +441,67 @@
   when: 
     - radarr_api_key is defined
     - radarr_indexer_config.json is defined
+
+# Configure Failed Download Handling
+- name: Get Sonarr download client config
+  uri:
+    url: "http://{{ ansible_host }}:8989/api/v3/config/downloadclient"
+    headers:
+      X-Api-Key: "{{ sonarr_api_key }}"
+    method: GET
+  register: sonarr_downloadclient_config
+  when: sonarr_api_key is defined
+
+- name: Enable Sonarr failed download handling (auto-blacklist and retry)
+  uri:
+    url: "http://{{ ansible_host }}:8989/api/v3/config/downloadclient/{{ sonarr_downloadclient_config.json.id }}"
+    method: PUT
+    headers:
+      X-Api-Key: "{{ sonarr_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      id: "{{ sonarr_downloadclient_config.json.id }}"
+      enableCompletedDownloadHandling: true
+      removeCompletedDownloads: true
+      removeFailedDownloads: true
+      autoRedownloadFailed: true
+      autoRedownloadFailedFromInteractiveSearch: true
+      checkForFinishedDownloadInterval: 1
+    status_code: [200, 202]
+  when: 
+    - sonarr_api_key is defined
+    - sonarr_downloadclient_config.json is defined
+
+- name: Get Radarr download client config
+  uri:
+    url: "http://{{ ansible_host }}:7878/api/v3/config/downloadclient"
+    headers:
+      X-Api-Key: "{{ radarr_api_key }}"
+    method: GET
+  register: radarr_downloadclient_config
+  when: radarr_api_key is defined
+
+- name: Enable Radarr failed download handling (auto-blacklist and retry)
+  uri:
+    url: "http://{{ ansible_host }}:7878/api/v3/config/downloadclient/{{ radarr_downloadclient_config.json.id }}"
+    method: PUT
+    headers:
+      X-Api-Key: "{{ radarr_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      id: "{{ radarr_downloadclient_config.json.id }}"
+      enableCompletedDownloadHandling: true
+      removeCompletedDownloads: true
+      removeFailedDownloads: true
+      autoRedownloadFailed: true
+      autoRedownloadFailedFromInteractiveSearch: true
+      checkForFinishedDownloadInterval: 1
+    status_code: [200, 202]
+  when: 
+    - radarr_api_key is defined
+    - radarr_downloadclient_config.json is defined
 
 # Run Recyclarr sync
 - name: Run Recyclarr sync

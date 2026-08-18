@@ -1,0 +1,127 @@
+#!/bin/bash
+#
+# Malicious File Monitor Script
+# Monitors downloads directory for .exe and .iso files, marks them as failed via API, 
+# blacklists the source, and triggers retry from a different source
+#
+
+DOWNLOADS_DIR="{{ downloads_dir }}"
+SONARR_URL="http://{{ ansible_host }}:8989"
+RADARR_URL="http://{{ ansible_host }}:7878"
+SONARR_API_KEY="{{ sonarr_api_key }}"
+RADARR_API_KEY="{{ radarr_api_key }}"
+LOG_FILE="/config/malware-monitor.log"
+CHECK_INTERVAL=60  # Check every 60 seconds
+
+# File patterns to detect (pipe-separated for grep -E)
+MALICIOUS_PATTERNS="\.exe$|\.iso$"
+
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
+}
+
+# Function to mark download as failed and blacklist in Sonarr
+handle_sonarr_failed() {
+    local download_path="$1"
+    local download_name=$(basename "$download_path")
+    
+    log "Checking Sonarr queue for: $download_name"
+    
+    # Get queue items
+    queue_json=$(curl -s "${SONARR_URL}/api/v3/queue" -H "X-Api-Key: ${SONARR_API_KEY}")
+    
+    # Find matching queue item by download path or title
+    queue_id=$(echo "$queue_json" | jq -r --arg path "$download_name" '.records[] | select(.title | contains($path)) | .id' | head -n1)
+    
+    if [ -n "$queue_id" ] && [ "$queue_id" != "null" ]; then
+        log "Found Sonarr queue item ID: $queue_id - Marking as failed and blacklisting"
+        
+        # Remove from queue with blacklist flag
+        curl -s -X DELETE "${SONARR_URL}/api/v3/queue/${queue_id}?removeFromClient=true&blacklist=true&blocklist=true" \
+            -H "X-Api-Key: ${SONARR_API_KEY}"
+        
+        log "✓ Blacklisted in Sonarr, auto-retry will be triggered"
+        return 0
+    else
+        log "⚠ Could not find queue item in Sonarr for: $download_name"
+        return 1
+    fi
+}
+
+# Function to mark download as failed and blacklist in Radarr
+handle_radarr_failed() {
+    local download_path="$1"
+    local download_name=$(basename "$download_path")
+    
+    log "Checking Radarr queue for: $download_name"
+    
+    # Get queue items
+    queue_json=$(curl -s "${RADARR_URL}/api/v3/queue" -H "X-Api-Key: ${RADARR_API_KEY}")
+    
+    # Find matching queue item by download path or title
+    queue_id=$(echo "$queue_json" | jq -r --arg path "$download_name" '.records[] | select(.title | contains($path)) | .id' | head -n1)
+    
+    if [ -n "$queue_id" ] && [ "$queue_id" != "null" ]; then
+        log "Found Radarr queue item ID: $queue_id - Marking as failed and blacklisting"
+        
+        # Remove from queue with blacklist flag
+        curl -s -X DELETE "${RADARR_URL}/api/v3/queue/${queue_id}?removeFromClient=true&blacklist=true&blocklist=true" \
+            -H "X-Api-Key: ${RADARR_API_KEY}"
+        
+        log "✓ Blacklisted in Radarr, auto-retry will be triggered"
+        return 0
+    else
+        log "⚠ Could not find queue item in Radarr for: $download_name"
+        return 1
+    fi
+}
+
+# No direct file deletion - Sonarr/Radarr handle cleanup via API
+# The removeFromClient=true parameter in the API calls instructs them to:
+# 1. Remove the torrent from qBittorrent
+# 2. Delete the downloaded files
+# 3. Blacklist the release
+# 4. Trigger automatic search for a replacement
+
+# Main monitoring loop
+log "=========================================="
+log "Malicious File Monitor Started"
+log "Downloads Directory: $DOWNLOADS_DIR"
+log "Monitoring for: .exe, .iso files"
+log "Check Interval: ${CHECK_INTERVAL}s"
+log "=========================================="
+
+while true; do
+    # Find all malicious files in downloads directory
+    if [ -d "$DOWNLOADS_DIR" ]; then
+        # Search for .exe files
+        while IFS= read -r -d '' malicious_file; do
+            if [ -f "$malicious_file" ]; then
+                log ""
+                log "🚨 ALERT: Found malicious file: $malicious_file"
+                
+                # Get the download folder path
+                download_folder=$(dirname "$malicious_file")
+                
+                # Try to handle in Sonarr (API will handle deletion)
+                if handle_sonarr_failed "$download_folder"; then
+                    log "✓ Sonarr will handle file cleanup and retry"
+                # Try Radarr if not found in Sonarr (API will handle deletion)
+                elif handle_radarr_failed "$download_folder"; then
+                    log "✓ Radarr will handle file cleanup and retry"
+                else
+                    # If not found in either queue
+                    log "⚠ Not found in Sonarr or Radarr queue"
+                    log "⚠ File may have been already processed or downloaded manually"
+                    log "⚠ Manual cleanup required: $malicious_file"
+                    log "ℹ️  You can safely delete: $download_folder"
+                fi
+                
+                log ""
+            fi
+        done < <(find "$DOWNLOADS_DIR" -type f \( -iname "*.exe" -o -iname "*.iso" \) -print0 2>/dev/null)
+    fi
+    
+    # Wait before next check
+    sleep "$CHECK_INTERVAL"
+done
