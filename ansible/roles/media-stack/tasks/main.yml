@@ -187,6 +187,30 @@
     group: 100
     mode: '0644'
 
+- name: Create OpenVPN config directory
+  file:
+    path: "{{ appdata_dir }}/binhex-qbittorrentvpn/openvpn"
+    state: directory
+    owner: 911
+    group: 100
+    mode: '0755'
+
+- name: Deploy OpenVPN configuration file
+  copy:
+    src: "{{ playbook_dir }}/group_vars/all/openvpn/vpn.ovpn"
+    dest: "{{ appdata_dir }}/binhex-qbittorrentvpn/openvpn/vpn.ovpn"
+    owner: 911
+    group: 100
+    mode: '0775'
+
+- name: Deploy OpenVPN credentials file
+  copy:
+    src: "{{ playbook_dir }}/group_vars/all/openvpn/credentials.conf"
+    dest: "{{ appdata_dir }}/binhex-qbittorrentvpn/openvpn/credentials.conf"
+    owner: 911
+    group: 100
+    mode: '0775'
+
 - name: Copy docker-compose.yml 
   template:
     src: docker-compose.yml.j2
