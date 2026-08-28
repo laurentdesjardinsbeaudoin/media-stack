@@ -170,6 +170,23 @@
     dest: "{{ appdata_dir }}/haproxy/haproxy.cfg"
     mode: '0644'
 
+- name: Create qBittorrent config directory
+  file:
+    path: "{{ appdata_dir }}/binhex-qbittorrentvpn/qBittorrent/config"
+    state: directory
+    owner: 911
+    group: 100
+    mode: '0755'
+    recurse: yes
+
+- name: Deploy qBittorrent configuration with file exclusion list
+  template:
+    src: qBittorrent.conf.j2
+    dest: "{{ appdata_dir }}/binhex-qbittorrentvpn/qBittorrent/config/qBittorrent.conf"
+    owner: 911
+    group: 100
+    mode: '0644'
+
 - name: Copy docker-compose.yml 
   template:
     src: docker-compose.yml.j2
