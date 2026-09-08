@@ -83,6 +83,43 @@ handle_radarr_failed() {
 # 3. Blacklist the release
 # 4. Trigger automatic search for a replacement
 
+# Catches releases where qBittorrent's exclusion left 0 importable files, which
+# Sonarr/Radarr report as a queue warning rather than a "failed" download (so
+# autoRedownloadFailed never fires and the item is stuck forever).
+check_sonarr_import_warnings() {
+    queue_json=$(curl -s "${SONARR_URL}/api/v3/queue" -H "X-Api-Key: ${SONARR_API_KEY}")
+
+    echo "$queue_json" | jq -r '
+        .records[]
+        | select(.trackedDownloadStatus == "warning")
+        | select([.statusMessages[]?.messages[]?] | any(test("eligible for import|no files found"; "i")))
+        | "\(.id)\t\(.title)"
+    ' | while IFS=$'\t' read -r queue_id title; do
+        [ -z "$queue_id" ] && continue
+        log "🚨 ALERT: Sonarr import blocked (no eligible files): $title (queue id $queue_id)"
+        curl -s -X DELETE "${SONARR_URL}/api/v3/queue/${queue_id}?removeFromClient=true&blacklist=true&blocklist=true" \
+            -H "X-Api-Key: ${SONARR_API_KEY}"
+        log "✓ Blacklisted in Sonarr, auto-retry will be triggered"
+    done
+}
+
+check_radarr_import_warnings() {
+    queue_json=$(curl -s "${RADARR_URL}/api/v3/queue" -H "X-Api-Key: ${RADARR_API_KEY}")
+
+    echo "$queue_json" | jq -r '
+        .records[]
+        | select(.trackedDownloadStatus == "warning")
+        | select([.statusMessages[]?.messages[]?] | any(test("eligible for import|no files found"; "i")))
+        | "\(.id)\t\(.title)"
+    ' | while IFS=$'\t' read -r queue_id title; do
+        [ -z "$queue_id" ] && continue
+        log "🚨 ALERT: Radarr import blocked (no eligible files): $title (queue id $queue_id)"
+        curl -s -X DELETE "${RADARR_URL}/api/v3/queue/${queue_id}?removeFromClient=true&blacklist=true&blocklist=true" \
+            -H "X-Api-Key: ${RADARR_API_KEY}"
+        log "✓ Blacklisted in Radarr, auto-retry will be triggered"
+    done
+}
+
 # Main monitoring loop
 log "=========================================="
 log "Malicious File Monitor Started"
@@ -92,6 +129,10 @@ log "Check Interval: ${CHECK_INTERVAL}s"
 log "=========================================="
 
 while true; do
+    # Runs independent of the file scan below since the excluded file never hits disk
+    check_sonarr_import_warnings
+    check_radarr_import_warnings
+
     # Find all malicious files in downloads directory
     if [ -d "$DOWNLOADS_DIR" ]; then
         # Search for .exe files
