@@ -1,79 +1,72 @@
 # Disk Space Optimization Configuration
 
-This media stack is now optimized to **prefer 1080p HD** over 4K/2160p to save disk space.
+This media stack **prefers 1080p HD** over 4K/2160p to save disk space. Quality profiles are managed by Recyclarr from `ansible/roles/media-stack/templates/recyclarr.yml.j2`.
 
 ## How It Works
 
-### 1. Quality Profile Configuration (via Recyclarr)
+### 1. Quality Profiles (via Recyclarr)
 
-**HD+ Profile (Recommended for Limited Disk Space):**
-- ✅ **Cutoff at 1080p** - Won't upgrade beyond Bluray-1080p
-- ✅ **4K Discouraged** - 2160p releases get -3000 score
-- ✅ **HDR Discouraged** - HDR formats (usually 4K) get -2000 score
-- ✅ **Upgrade Allowed** - Can upgrade within 1080p range (HDTV → WEB → Bluray)
-- 📦 **4K as Fallback** - Will download 4K only if no 1080p available
+**HD+ Profile (recommended for limited disk space):**
+- ✅ **Cutoff at Bluray-1080p** — stops upgrading once Bluray-1080p is reached
+- ✅ **Upgrades allowed** within the profile (e.g. HDTV → WEB → Bluray)
+- 📦 **4K as fallback** — 2160p qualities are ranked below every 1080p quality, so 4K is only grabbed when no 1080p release is available
+- ⚠️ 4K and HDR releases are **not** given a negative score; preference comes from quality order only
 
-**Quality Order (by preference):**
+**Quality order (Radarr; Sonarr is the same without the Remux entries):**
 1. Bluray-1080p (highest)
 2. Remux-1080p
-3. WEB 1080p
+3. WEBDL-1080p
 4. HDTV-1080p
-5. Bluray-2160p (discouraged, fallback only)
-6. WEB 2160p (discouraged, fallback only)
-7. HDTV-2160p (discouraged, fallback only)
+5. Bluray-2160p (fallback)
+6. Remux-2160p (fallback)
+7. WEBDL-2160p (fallback)
+8. HDTV-2160p (fallback)
 
-### 2. Seeder Preference (Built-in to Sonarr/Radarr)
+**Ultra-HD Profile:**
+- 2160p qualities only
+- Upgrades disabled
 
-**Automatically Prioritized:**
-- 🌱 **More seeders** = Higher priority
-- 📊 **Peer count** considered in ranking
-- ⚡ **Download speed** potential calculated
-- 🔄 **Indexer reliability** factored in
+### 2. Release Ranking (Sonarr/Radarr built-in)
 
-**Configuration Applied:**
-- `preferIndexerFlags: true` - Respects indexer flags (freeleech, etc.)
-- Automatic sorting by seeders/peers
-- No manual intervention needed
+Sonarr and Radarr rank releases by **quality first, then custom format score**. Seeders and peers are only used to choose between otherwise equal releases.
 
-### 3. Anti-Virus Protection (via Recyclarr)
+**Applied by the playbook:**
+- `preferIndexerFlags: true` — respects indexer flags (freeleech, etc.)
+- RSS sync every 60 minutes
 
-**Blocked Completely (-10000 score):**
-- 💿 ISO files (BR-DISK)
-- 💻 Executables
-- 🚫 Low-quality/fake release groups
-- 🎭 Obfuscated releases
-- 📼 x265 HD encodes (often fake)
+### 3. Anti-Virus / Fake Release Protection (via Recyclarr)
 
-**Discouraged (-5000 score):**
-- Suspicious patterns
-- Unknown release groups
+**Blocked (-10000 score):**
+- 💿 BR-DISK (disc images)
+- 🚫 LQ release groups and LQ release titles
+- Sonarr: bad dual groups
+- Radarr: 3D, Extras, Upscaled, releases with no release group
 
 **Preferred (+1500 score):**
-- Known good release groups
-- Scene releases
-- Trusted uploaders
+- Sonarr: Anime Web Tier 01, WEB Tier 01–02
+- Radarr: HD Bluray Tier 01–03, WEB Tier 01–02
+
+qBittorrent also refuses to download executables, disc images, archives and other risky file types — see [EXE-AUTO-CLEANUP.md](EXE-AUTO-CLEANUP.md).
 
 ## Expected Behavior
 
-### When Requesting Media:
+### When Requesting Media
 
-1. **Sonarr/Radarr searches all indexers**
-2. **Filters out fakes/viruses** (blocked formats)
-3. **Prefers 1080p releases** (HD+ profile)
-4. **Sorts by seeders** (more seeders = higher priority)
-5. **Downloads best match** (1080p + most seeders)
+1. Sonarr/Radarr search all indexers.
+2. Blocked custom formats are filtered out.
+3. The highest-ranked quality in the HD+ profile wins (1080p before 4K).
+4. Within the same quality, the higher custom format score wins; seeders break ties.
+5. The best match is downloaded.
 
-### If Only 4K Available:
+### If Only 4K Is Available
 
-- Will download 4K as fallback
-- Won't upgrade existing 1080p to 4K
-- Saves disk space by preferring smaller files
+- 4K is downloaded as a fallback.
+- Existing 1080p files are not upgraded to 4K (the cutoff is Bluray-1080p).
 
-### Failed Downloads:
+### Failed Downloads
 
-- Automatically removed
-- Next best release tried
-- Fake releases skipped
+- Removed automatically and blocklisted
+- The next best release is searched for automatically
 
 ## File Sizes (Approximate)
 
@@ -86,38 +79,44 @@ This media stack is now optimized to **prefer 1080p HD** over 4K/2160p to save d
 | **4K Bluray** | **40-80 GB** | **10-20 GB** |
 | **4K Remux** | **60-100 GB** | **15-30 GB** |
 
-**Disk Space Savings: 60-75% by preferring 1080p over 4K**
+**Disk space savings: roughly 60-75% by preferring 1080p over 4K**
+
+> Note: Remux-1080p is ranked above WEB-1080p in Radarr, and Remux files are large. Remove it from the HD+ profile if space is tight.
+
+## Hardlinks (Not Currently Enabled)
+
+Downloads and media are mounted into the containers as separate paths (`/downloads` and `/movies`/`/tv`/`/data`). Sonarr/Radarr therefore **copy** completed downloads instead of hardlinking them, so a file uses double the space until qBittorrent stops seeding it (ratio 1 or 7 days, whichever comes first).
 
 ## Configuration Files
 
-- **Quality Profiles:** `/opt/media-stack/recyclarr/recyclarr.yml`
-- **Sonarr Config:** `/opt/media-stack/sonarr/config.xml`
-- **Radarr Config:** `/opt/media-stack/radarr/config.xml`
+- **Quality profiles:** `/opt/media-stack/recyclarr/recyclarr.yml`
+- **Sonarr config:** `/opt/media-stack/sonarr/config.xml`
+- **Radarr config:** `/opt/media-stack/radarr/config.xml`
 
 ## Manual Override
 
-If you want a specific show/movie in 4K:
+To get a specific show or movie in 4K:
 
-1. Go to Sonarr/Radarr
-2. Find the series/movie
-3. Change quality profile to "Ultra-HD"
-4. Search and grab manually
+1. Open Sonarr/Radarr.
+2. Find the series or movie.
+3. Change its quality profile to **Ultra-HD**.
+4. Search and grab.
 
 ## Monitoring
 
-Check disk usage:
+Disk usage of the library:
 ```bash
 df -h /mnt/data0/appdata/data
 du -sh /mnt/data0/appdata/data/*
 ```
 
-Check download sizes:
+Disk usage of downloads (includes torrents still seeding):
 ```bash
-docker exec -it qbittorrentvpn qbittorrent-cli torrent list
+du -sh /mnt/data0/appdata/downloads/*
 ```
 
 ## Recyclarr Sync Schedule
 
-- **Automatic:** Daily at 6:00 AM
+- **Automatic:** daily at 06:00 (root crontab)
 - **Manual:** `docker exec recyclarr recyclarr sync`
 - **Logs:** `/var/log/recyclarr-sync.log`

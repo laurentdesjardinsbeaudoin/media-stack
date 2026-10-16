@@ -195,9 +195,11 @@
     group: 100
     mode: '0755'
 
+# Point auth-user-pass at the deployed credentials file; a bare auth-user-pass
+# makes OpenVPN prompt for a username and exit, since the container has no tty
 - name: Deploy OpenVPN configuration file
   copy:
-    src: "{{ playbook_dir }}/group_vars/all/openvpn/vpn.ovpn"
+    content: "{{ lookup('file', playbook_dir + '/group_vars/all/openvpn/vpn.ovpn') | regex_replace('(?m)^\\s*auth-user-pass.*$', 'auth-user-pass /config/openvpn/credentials.conf') }}\n"
     dest: "{{ appdata_dir }}/binhex-qbittorrentvpn/openvpn/vpn.ovpn"
     owner: 911
     group: 100

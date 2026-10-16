@@ -2,54 +2,50 @@
 
 ## What This Does
 
-This system automatically:
-1. ✅ **Monitors downloads** for .exe and .iso files every 60 seconds
-2. ✅ **Detects malicious files** when they appear
-3. ✅ **Calls Sonarr/Radarr API** to mark as failed
-4. ✅ **Blacklists the source** (prevents re-download from same source)
-5. ✅ **Triggers automatic retry** from a different source
-6. ✅ **Sonarr/Radarr delete files** (no direct rm -rf operations)
+Bad releases are handled in three layers:
+
+1. **qBittorrent exclusion list (preventive)** — `.exe`, `.iso`, scripts, archives and many other file types are never written to disk. Configured in `ansible/roles/media-stack/templates/qBittorrent.conf.j2` (`Session\ExcludedFileNames`).
+2. **Recyclarr custom formats (preventive)** — Sonarr/Radarr give BR-DISK, LQ and similar releases a score of -10000, so they are never grabbed.
+3. **Malware monitor (reactive)** — a background container that, every 60 seconds:
+   - finds `.exe`/`.iso` files in the downloads folder and removes the matching download through Sonarr/Radarr
+   - finds queue items stuck with "no files eligible for import" (usually because the exclusion list removed every file) and removes those too
+
+In both cases the release is blocklisted and Sonarr/Radarr search for a replacement automatically.
 
 ## How It Works
 
 ### 1. Malware Monitor Service
-- Runs as a Docker container (`malware-monitor`)
-- Scans downloads directory every 60 seconds for .exe and .iso files
-- When malicious file is found:
-  - Identifies which download it belongs to
-  - Calls Sonarr/Radarr API with `removeFromClient=true&blacklist=true`
-  - Sonarr/Radarr handle file deletion safely
-  - Source is blacklisted to prevent re-download
-  - Logs everything to `/appdata/malware-monitor/malware-monitor.log`
+- Runs as the `malware-monitor` Docker container (Alpine, installs `bash`, `curl` and `jq` on start).
+- Script: `ansible/roles/media-stack/templates/exe-monitor.sh.j2`, deployed to `{{ appdata_dir }}/malware-monitor/malware-monitor.sh`.
+- **File scan** — when an `.exe` or `.iso` is found:
+  - Takes the name of the folder containing the file.
+  - Looks for a Sonarr queue item whose title contains that name, then Radarr.
+  - Calls `DELETE /api/v3/queue/{id}?removeFromClient=true&blocklist=true`.
+  - If no queue item matches, it only logs a "manual cleanup required" message (it repeats every scan until the file is gone).
+- **Import-warning scan** — queue items with status `warning` and a message matching "eligible for import" or "no files found" are removed and blocklisted the same way.
+- Logs to `docker logs malware-monitor` and to `{{ appdata_dir }}/malware-monitor/malware-monitor.log`.
 
 ### 2. Sonarr/Radarr Auto-Retry
-- Failed download handling is enabled
-- When a download is marked failed:
-  - Automatically searches for another release
-  - Picks a different source (blacklist prevents same source)
-  - Downloads the replacement
-  - WEBDL releases are **NOT** blocked (you get to keep them!)
+The playbook enables failed download handling in both apps:
+- Completed download handling on
+- Remove completed / failed downloads on
+- Redownload failed (including from interactive search) on
 
-### 3. API-Only Deletion (No rm -rf)
-- **Zero direct file system operations** from monitor script
-- Sonarr/Radarr APIs handle all deletion
-- They know exactly what they downloaded
-- Safer than shell script deletion
+When a download is removed with `blocklist=true`, that release is blocklisted and a new search runs. WEBDL releases are **not** blocked.
+
+### 3. API-Only Deletion
+- The monitor script never deletes files itself.
+- `removeFromClient=true` tells Sonarr/Radarr to remove the torrent and its data from qBittorrent.
 
 ## Deployment
 
-Run Ansible to deploy the updated configuration:
+Deployed by the main playbook. From the Ansible container (see [README.md](README.md#3-deploy)):
 
 ```bash
-cd /home/ldbeaudoin/media-stack/ansible
-ansible-playbook -i inventory/hosts.yml main.yml --ask-vault-pass
+ansible-playbook main.yml --ask-become-pass --ask-vault-pass
 ```
 
-This will:
-- Deploy the malware-monitor.sh script
-- Start the malware-monitor container
-- Enable failed download handling in Sonarr/Radarr
-- Configure auto-blacklist and retry
+This deploys the script, starts the `malware-monitor` container and enables failed download handling in Sonarr/Radarr.
 
 ## Monitoring
 
@@ -59,148 +55,124 @@ This will:
 # Live tail
 docker logs -f malware-monitor
 
-# View log file
+# Log file (default appdata_dir)
 cat /opt/media-stack/malware-monitor/malware-monitor.log
 ```
+
+The log file is not rotated.
 
 ### Check for Current Malicious Files
 
 ```bash
-# Manual scan for .exe and .iso files
 find /mnt/data0/appdata/downloads -type f \( -iname "*.exe" -o -iname "*.iso" \) 2>/dev/null
 ```
 
-### View Blacklist
+### View Blocklist
 
-**Sonarr**: http://YOUR_IP:8989 → Activity → Blocklist  
+**Sonarr**: http://YOUR_IP:8989 → Activity → Blocklist
 **Radarr**: http://YOUR_IP:7878 → Activity → Blocklist
 
 ## Configuration
 
 ### Change Scan Interval
 
-Edit the script in [ansible/roles/media-stack/templates/exe-monitor.sh.j2](ansible/roles/media-stack/templates/exe-monitor.sh.j2):
+Edit `CHECK_INTERVAL` in `ansible/roles/media-stack/templates/exe-monitor.sh.j2`:
 
 ```bash
-CHECK_INTERVAL=60  # Change to desired seconds
+CHECK_INTERVAL=60  # seconds
 ```
 
 Then redeploy with Ansible.
 
-### Manually Trigger Cleanup
-
-If you want to manually trigger cleanup of an .exe file:
+### Trigger an Immediate Scan
 
 ```bash
-# The monitor will pick it up automatically within 60 seconds
-# Or restart the container to trigger immediate scan
-docker restart exe-monitor
+docker restart malware-monitor
 ```
 
 ## Testing
 
-To test that the system works:
-
-1. **Check monitor is running**:
+1. **Check the monitor is running**:
    ```bash
-   docker ps | grep exe-monitor
-   docker logs exe-monitor
+   docker ps | grep malware-monitor
+   docker logs malware-monitor
    ```
 
-2. **Simulate a bad download** (testing only!):
+2. **Simulate a bad download** (testing only):
    ```bash
-   # Create a test .exe in downloads
-   touch /path/to/downloads/test-show/test.exe
-   
-   # Watch the monitor detect and handle it
-   docker logs -f exe-monitor
+   # Use the folder of an item that is currently in the Sonarr/Radarr queue,
+   # otherwise the monitor only logs "manual cleanup required"
+   touch /mnt/data0/appdata/downloads/<download-folder>/test.exe
+   docker logs -f malware-monitor
    ```
 
-3. **Verify blacklist**:
-   - Check Sonarr/Radarr Activity → Blocklist
-   - Should see the bad release listed
+3. **Verify the blocklist**: Sonarr/Radarr → Activity → Blocklist should show the release.
 
 ## What Gets Blocked vs Allowed
 
-### ✅ ALLOWED (No longer blocked by Recyclarr):
-- WEBDL-1080p (your preferred format!)
-- WEBDL-2160p
-- All other valid video formats
+### ✅ Allowed
+- WEBDL-1080p and WEBDL-2160p
+- Other normal video releases
 
-### ⚠️ STILL BLOCKED by Recyclarr (preemptive):
-- BR-DISK (.iso files)
-- Known bad release groups
-- Suspicious naming patterns
-- Files with no proper release group
+### ⚠️ Blocked by Recyclarr (before grabbing)
+- BR-DISK (disc images)
+- LQ / suspicious release groups and titles
+- Bad dual groups (Sonarr)
+- 3D, Extras, Upscaled and releases with no group (Radarr)
 
-### 🚨 BLOCKED by EXE Monitor (reactive):
-- **Any .exe files** - Detected after download, deleted immediately
-- Source automatically blacklisted
-- New source tried automatically
+### 🚫 Excluded by qBittorrent (never downloaded)
+- Executables, scripts, disc images, archives, Office macro files, samples, trailers, and cam/telesync markers. See the full list in `qBittorrent.conf.j2`.
 
-## Advantages of This Approach
+### 🚨 Removed by the Malware Monitor (after download)
+- Downloads containing `.exe` or `.iso` files
+- Downloads stuck with no importable files
 
-1. **Doesn't block WEBDL** - You get the quality you want
-2. **Reactive cleanup** - Only deletes actual malicious files
-3. **Automatic retry** - No manual intervention needed
-4. **Source blacklisting** - Won't download from bad source again
-5. **Comprehensive logging** - Full audit trail
-6. **No false positives** - Only targets actual .exe files
+## Limitations
+
+- The file scan matches the **folder name** against the queue **title** (case-sensitive). Single-file torrents saved directly in the downloads root, or folders named differently from the release title, are not matched.
+- Some exclusion patterns are broad (e.g. `*TS*`, `*TC*`) and can exclude legitimate files. The import-warning scan then blocklists the release, which may repeat for the same title.
 
 ## Troubleshooting
 
-### Monitor not detecting .exe files?
+### Monitor not detecting files?
 
 ```bash
-# Check if monitor is running
-docker ps | grep exe-monitor
-
-# Check logs for errors
-docker logs exe-monitor
-
-# Verify script permissions
-ls -la /path/to/appdata/exe-monitor/exe-monitor.sh
-
-# Restart monitor
-docker restart exe-monitor
+docker ps | grep malware-monitor
+docker logs malware-monitor
+ls -la /opt/media-stack/malware-monitor/malware-monitor.sh
+docker restart malware-monitor
 ```
 
 ### Download not retrying automatically?
 
-1. Check Sonarr/Radarr settings:
-   - Settings → Download Clients
-   - Verify "Redownload Failed" is enabled
-   - Verify "Remove Failed" is enabled
+1. Sonarr/Radarr → Settings → Download Clients: check "Redownload Failed" and "Remove Failed" are enabled.
+2. Activity → Queue: a new download should appear.
+3. Series/Movie → Search: check other releases are available.
 
-2. Check if the item is in the queue:
-   - Activity → Queue
-   - Should see a new download starting
+### Need to clear the blocklist?
 
-3. Check for available sources:
-   - Series/Movie → Search
-   - Verify other sources are available
+Via the UI: Activity → Blocklist → select items → Delete.
 
-### Need to clear the blacklist?
+Via the API (Sonarr shown; use port 7878 for Radarr):
 
 ```bash
-# Via Sonarr UI
-# Activity → Blocklist → Select items → Delete
-
-# Via API (clear all)
-curl "http://localhost:8989/api/v3/blocklist" -H "X-Api-Key: YOUR_API_KEY" | \
-  jq -r '.[].id' | \
-  xargs -I {} curl -X DELETE "http://localhost:8989/api/v3/blocklist/{}" -H "X-Api-Key: YOUR_API_KEY"
+API_KEY=YOUR_API_KEY
+curl -s "http://localhost:8989/api/v3/blocklist?pageSize=1000" -H "X-Api-Key: $API_KEY" | \
+  jq -r '.records[].id' | \
+  xargs -I {} curl -s -X DELETE "http://localhost:8989/api/v3/blocklist/{}" -H "X-Api-Key: $API_KEY"
 ```
 
-## Files Modified/Created
+## Related Files
 
-- `ansible/roles/media-stack/templates/exe-monitor.sh.j2` - Monitor script (NEW)
-- `ansible/roles/media-stack/templates/docker-compose.yml.j2` - Added exe-monitor service
-- `ansible/roles/media-stack/tasks/main.yml` - Added deployment tasks and API config
+- `ansible/roles/media-stack/templates/exe-monitor.sh.j2` — monitor script
+- `ansible/roles/media-stack/templates/qBittorrent.conf.j2` — exclusion list
+- `ansible/roles/media-stack/templates/recyclarr.yml.j2` — custom formats
+- `ansible/roles/media-stack/templates/docker-compose.yml.j2` — `malware-monitor` service
+- `ansible/roles/media-stack/tasks/main.yml` — deployment and Sonarr/Radarr API configuration
 
 ## Logs Location
 
-- **Monitor logs**: `/appdata/exe-monitor/exe-monitor.log`
-- **Sonarr logs**: `docker logs sonarr`
-- **Radarr logs**: `docker logs radarr`
-- **qBittorrent logs**: `docker logs qbittorrentvpn`
+- **Monitor**: `docker logs malware-monitor` or `/opt/media-stack/malware-monitor/malware-monitor.log`
+- **Sonarr**: `docker logs sonarr`
+- **Radarr**: `docker logs radarr`
+- **qBittorrent**: `docker logs qbittorrentvpn`
