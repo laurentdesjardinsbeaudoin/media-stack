@@ -22,6 +22,7 @@ Complete media server stack with Sonarr, Radarr, Prowlarr, Overseerr, Plex, qBit
 - Root folders in Sonarr/Radarr
 - Plex server claim and library setup
 - Overseerr setup
+- Cleanuparr settings (see [EXE-AUTO-CLEANUP.md](EXE-AUTO-CLEANUP.md#web-ui-settings))
 - Passwords for Portainer, qBittorrent and the *arr apps
 
 ## Prerequisites
@@ -151,6 +152,7 @@ Replace `ip` with your server's address.
 | Bazarr | 6767 | Subtitle management |
 | Jackett | 9117 | Torrent indexer proxy (overlaps with Prowlarr) |
 | Samba | 139 / 445 | File shares: `appdata`, `media`, `downloads` |
+| Cleanuparr | 11011 | Malware blocking, failed/stalled download and orphaned file cleanup (configured in its web UI) |
 | Recyclarr | - | Quality profile sync (background) |
 | Malware monitor | - | Removes downloads containing `.exe`/`.iso` files (background) |
 

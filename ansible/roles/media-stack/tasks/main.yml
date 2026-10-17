@@ -104,6 +104,7 @@
     - 9000/tcp      # Portainer
     - 9117/tcp      # Jackett
     - 9696/tcp      # Prowlarr
+    - 11011/tcp     # Cleanuparr
     - 32400/tcp     # Plex
 
 - name: Ensure base appdata directory exists
@@ -245,7 +246,26 @@
     group: 100
     mode: '0775'
 
-- name: Copy docker-compose.yml 
+# Cleanuparr Configuration (settings live in its web UI / database; see EXE-AUTO-CLEANUP.md)
+- name: Create cleanuparr config directory
+  file:
+    path: "{{ appdata_dir }}/cleanuparr"
+    state: directory
+    owner: 911
+    group: 100
+    mode: '0755'
+
+# Pinned copy of Cleanuparr's permissive blocklist: extensions only, no video or
+# subtitle types. Must not contain comments, Cleanuparr treats every line as a pattern
+- name: Deploy Cleanuparr malware blocklist
+  copy:
+    src: cleanuparr-blocklist.txt
+    dest: "{{ appdata_dir }}/cleanuparr/blocklist.txt"
+    owner: 911
+    group: 100
+    mode: '0644'
+
+- name: Copy docker-compose.yml
   template:
     src: docker-compose.yml.j2
     dest: "{{ appdata_dir }}/docker-compose.yml"

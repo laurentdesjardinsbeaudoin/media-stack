@@ -193,6 +193,26 @@ services:
       - TZ=America/New_York
     restart: unless-stopped
 
+  cleanuparr:
+    image: ghcr.io/cleanuparr/cleanuparr:latest
+    container_name: cleanuparr
+    ports:
+      - "11011:11011"
+    volumes:
+      - {{ appdata_dir }}/cleanuparr:/config
+      # Same path as in qbittorrentvpn so orphaned-file checks see identical save paths
+      - {{ downloads_dir }}:/downloads
+    environment:
+      - PORT=11011
+      - PUID=911
+      - PGID=100
+      - TZ=America/New_York
+    restart: unless-stopped
+    depends_on:
+      - sonarr
+      - radarr
+      - qbittorrentvpn
+
   malware-monitor:
     image: alpine:latest
     container_name: malware-monitor

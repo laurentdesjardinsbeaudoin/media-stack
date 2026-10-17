@@ -12,6 +12,8 @@ Bad releases are handled in three layers:
 
 In both cases the release is blocklisted and Sonarr/Radarr search for a replacement automatically.
 
+4. **Cleanuparr (being introduced to replace the malware monitor)** — see [Cleanuparr](#cleanuparr) below. It covers everything the monitor does and also removes stalled downloads, failed imports, and files in `downloads` that no torrent uses.
+
 ## How It Works
 
 ### 1. Malware Monitor Service
@@ -36,6 +38,92 @@ When a download is removed with `blocklist=true`, that release is blocklisted an
 ### 3. API-Only Deletion
 - The monitor script never deletes files itself.
 - `removeFromClient=true` tells Sonarr/Radarr to remove the torrent and its data from qBittorrent.
+
+## Cleanuparr
+
+[Cleanuparr](https://github.com/Cleanuparr/Cleanuparr) runs as the `cleanuparr` container (web UI on port 11011). Ansible deploys the container and its blocklist (`{{ appdata_dir }}/cleanuparr/blocklist.txt`). **All other settings are made in the web UI** and stored in its database under `{{ appdata_dir }}/cleanuparr/`, so they survive redeploys but are not in this repo.
+
+### Compared with the malware monitor
+
+| Malware monitor does | Cleanuparr equivalent |
+|---|---|
+| Finds `.exe`/`.iso` on disk and removes + blocklists the download | Torrents whose files were all excluded by qBittorrent (complete with 0 bytes) are removed + blocklisted by the **Queue Cleaner** on its next run. **Malware Blocker** also skips any file matching its blocklist (409 extensions) and removes the torrent if every file is blocked |
+| Removes items stuck with "no files eligible for import" | **Queue Cleaner** failed-import handling with the `No files found are eligible for import` pattern |
+| Runs every 60 s | Runs every 5 min; failed imports need 3 strikes (about 15 min) |
+
+Things to know:
+- Cleanuparr only acts on downloads in the Sonarr/Radarr queue. Torrents added by hand are protected only by qBittorrent's exclusion list, the same as today.
+- Cleanuparr ignores files that qBittorrent has already excluded. "Delete if any file is blocked" therefore never triggers for `.exe` and other excluded types, so leave it off. A torrent containing a video **and** an `.exe` still downloads the video only (the same as today).
+- The blocklist file has no comments on purpose: Cleanuparr treats every line as a pattern.
+
+### Rollout
+
+1. Deploy with the playbook. The malware monitor keeps running.
+2. Configure Cleanuparr as below, with **Dry Run on**.
+3. For about a week, compare `docker logs cleanuparr` with `docker logs malware-monitor`. Check that Cleanuparr would remove what you expect, and nothing else.
+4. Turn **Dry Run off**.
+5. Once it has run live without problems, remove the `malware-monitor` service and its tasks.
+
+### Web UI settings
+
+Open `http://YOUR_IP:11011` and create the admin account.
+
+**General**
+- Dry Run: **on** (until step 4 of the rollout)
+
+**Arrs**
+- Sonarr: `http://YOUR_IP:8989`, API key from Sonarr → Settings → General
+- Radarr: `http://YOUR_IP:7878`, API key from Radarr → Settings → General
+
+**Download Client**
+- qBittorrent: `http://YOUR_IP:8080`, username `root` and your Web UI password
+- No path mapping needed (Cleanuparr mounts downloads at `/downloads`, the same as qBittorrent)
+
+**Malware Blocker**
+- Enabled, every 5 minutes
+- Sonarr and Radarr: Enable Blocklist **on**, Blocklist Path `/config/blocklist.txt`, Type **Blacklist**
+- Delete if any file is blocked: **off**
+
+**Queue Cleaner**
+- Enabled, every 5 minutes
+- Failed Import Max Strikes: `3`
+- Pattern mode: **Include**, patterns:
+  ```
+  No files found are eligible for import
+  title mismatch
+  not found in the grabbed release
+  was unexpected considering
+  not imported or missing
+  Unable to parse
+  Not an upgrade
+  Not a Custom Format upgrade
+  Not a quality revision upgrade
+  ```
+  The `Not ... upgrade` patterns clear downloads Sonarr/Radarr refused because you already have an equal or better version (the "same thing twice" case).
+- Stalled rule: public torrents, 0–100 %, max strikes `6` (about 30 min with no progress), reset strikes on progress **on**
+- Downloading Metadata max strikes: `6`
+- Slow rules: none
+
+**Download Cleaner**
+- Enabled, hourly
+- Seeding rules: none. Sonarr/Radarr already remove finished torrents after qBittorrent reaches ratio 1 or 7 days of seeding.
+- **Unlinked Download Settings: leave OFF.** Hardlinks are not set up in this stack, so every download would look unlinked and be removed.
+- Orphaned Files (inside the qBittorrent client section):
+  - Enabled
+  - Scan directory: `/downloads`
+  - Orphaned directory: `/downloads/orphaned`
+  - Minimum age: `24` hours
+  - Purge after: leave empty at first; once you trust it, `336` (14 days)
+
+  Check the layout first with `ls /mnt/data0/appdata/downloads`. If finished downloads sit in `sonarr/` and `radarr/` subfolders, use `/downloads/sonarr` and `/downloads/radarr` as scan directories instead. Cleanuparr never moves a folder that contains an active torrent.
+
+### Monitoring
+
+```bash
+docker logs -f cleanuparr
+```
+
+Orphaned files are moved to `/mnt/data0/appdata/downloads/orphaned` for review before anything is deleted.
 
 ## Deployment
 
