@@ -21,6 +21,38 @@
       - docker-compose-plugin
     state: present
 
+# The 1 TB media disk is mounted on the Proxmox host and shared in via
+# virtiofs (dir mapping "media-data"), so the VM disk can be snapshotted.
+- name: Mount media share from Proxmox host (virtiofs)
+  mount:
+    path: "{{ media_share_path }}"
+    src: "{{ media_share_tag }}"
+    fstype: virtiofs
+    opts: defaults,nofail
+    state: mounted
+
+# Without this, containers could start against an empty directory and
+# Plex/Sonarr/Radarr would think the library is gone.
+- name: Create Docker systemd drop-in directory
+  file:
+    path: /etc/systemd/system/docker.service.d
+    state: directory
+    mode: '0755'
+
+- name: Make Docker wait for the media share
+  copy:
+    content: |
+      [Unit]
+      RequiresMountsFor={{ media_share_path }}
+    dest: /etc/systemd/system/docker.service.d/media-mount.conf
+    mode: '0644'
+  register: docker_media_dropin
+
+- name: Reload systemd after Docker drop-in change
+  systemd:
+    daemon_reload: yes
+  when: docker_media_dropin.changed
+
 - name: Ensure Docker service is running
   service:
     name: docker

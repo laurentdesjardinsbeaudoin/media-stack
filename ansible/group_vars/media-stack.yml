@@ -2,6 +2,10 @@
 # Application config and docker-compose deployment
 appdata_dir: /opt/media-stack
 
+# virtiofs share from the Proxmox host (dir mapping tag) and where it mounts
+media_share_tag: media-data
+media_share_path: /mnt/data0/appdata
+
 # Media library (requires large disk)
 media_dir: /mnt/data0/appdata/data
 
