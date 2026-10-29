@@ -12,13 +12,14 @@ Complete media server stack with Sonarr, Radarr, Prowlarr, Overseerr, Plex, qBit
 - Quality profiles via Recyclarr (TRaSH Guides custom formats)
 - Download client (qBittorrent) in Sonarr/Radarr
 - Prowlarr app sync (Sonarr + Radarr added as applications)
+- FlareSolverr indexer proxy in Prowlarr (tag `flaresolverr`) and the 1337x indexer routed through it
 - Failed download handling (auto-remove, blocklist and re-search)
 - Malware monitor container (see [EXE-AUTO-CLEANUP.md](EXE-AUTO-CLEANUP.md))
 - HAProxy with a self-signed certificate, serving the dashboard
 - Daily Recyclarr sync (06:00)
 
 **⚙️ Manual Configuration Still Needed:**
-- Indexers in Prowlarr (they then sync to Sonarr/Radarr)
+- Other indexers in Prowlarr (they then sync to Sonarr/Radarr)
 - Root folders in Sonarr/Radarr
 - Plex server claim and library setup
 - Overseerr setup
@@ -107,7 +108,7 @@ Drop `--ask-pass` if you use SSH keys.
 Replace `ip` with your server's address.
 
 #### **Prowlarr** (http://ip:9696)
-1. Add your preferred indexers.
+1. Add your preferred indexers. 1337x is added automatically. For any other Cloudflare-protected site ("blocked by CloudFlare Protection"), add the `flaresolverr` tag to the indexer so its requests go through FlareSolverr.
 2. Sonarr and Radarr are already added under *Settings → Apps*; indexers sync to them automatically.
 
 #### **Sonarr** (http://ip:8989)
@@ -132,9 +133,9 @@ Replace `ip` with your server's address.
 #### **Plex** (http://ip:32400/web)
 1. Claim the server with your Plex account.
 2. Add libraries pointing at `/data`.
-
 3. Settings → Network (show advanced): Secure connections **Preferred**, Preferred network interface **ens18**, LAN Networks `192.168.0.0/16,172.16.0.0/12,10.0.0.0/8`. `ADVERTISE_IP` in the compose file sets the custom server URL.
 4. Change these in the web UI, not by editing `Preferences.xml` as root — the file must stay owned by uid 1000 or Plex fails to start ("Failed to load preferences").
+
 #### **Portainer** (http://ip:9000)
 1. Create the admin account straight away — Portainer has full control of Docker on the host.
 
@@ -150,6 +151,7 @@ Replace `ip` with your server's address.
 | Prowlarr | 9696 | Indexer manager (syncs to Sonarr/Radarr) |
 | Overseerr | 5055 | Media requests |
 | Plex | 32400 | Media server (host networking) |
+| FlareSolverr | — (internal 8191) | Cloudflare challenge solver for Prowlarr; not published, it has no authentication |
 | qBittorrent | 8080 | Download client, all traffic through the VPN (`tun0`) |
 | Bazarr | 6767 | Subtitle management |
 | Jackett | 9117 | Torrent indexer proxy (overlaps with Prowlarr) |

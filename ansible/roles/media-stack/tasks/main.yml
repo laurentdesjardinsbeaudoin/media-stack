@@ -703,4 +703,117 @@
     - sonarr_api_key is defined
     - radarr_api_key is defined
 
+# FlareSolverr indexer proxy - Prowlarr routes indexers tagged "flaresolverr"
+# through it to get past Cloudflare challenges (1337x blocks plain requests)
+- name: Get Prowlarr tags
+  uri:
+    url: "http://{{ ansible_host }}:9696/api/v1/tag"
+    headers:
+      X-Api-Key: "{{ prowlarr_api_key }}"
+    method: GET
+  register: prowlarr_tags
+  when: prowlarr_api_key is defined
 
+- name: Create flaresolverr tag in Prowlarr
+  uri:
+    url: "http://{{ ansible_host }}:9696/api/v1/tag"
+    method: POST
+    headers:
+      X-Api-Key: "{{ prowlarr_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      label: "flaresolverr"
+    status_code: [201]
+  register: prowlarr_flaresolverr_tag_created
+  when:
+    - prowlarr_api_key is defined
+    - prowlarr_tags.json | selectattr('label', 'equalto', 'flaresolverr') | list | length == 0
+
+- name: Set Prowlarr flaresolverr tag id
+  set_fact:
+    prowlarr_flaresolverr_tag_id: >-
+      {{ prowlarr_flaresolverr_tag_created.json.id
+         if prowlarr_flaresolverr_tag_created is not skipped
+         else (prowlarr_tags.json | selectattr('label', 'equalto', 'flaresolverr') | map(attribute='id') | first) }}
+  when: prowlarr_api_key is defined
+
+- name: Check if FlareSolverr proxy exists in Prowlarr
+  uri:
+    url: "http://{{ ansible_host }}:9696/api/v1/indexerproxy"
+    headers:
+      X-Api-Key: "{{ prowlarr_api_key }}"
+    method: GET
+  register: prowlarr_proxies
+  when: prowlarr_api_key is defined
+
+# Prowlarr tests the proxy on save, so retry while FlareSolverr's browser starts
+- name: Add FlareSolverr indexer proxy to Prowlarr
+  uri:
+    url: "http://{{ ansible_host }}:9696/api/v1/indexerproxy"
+    method: POST
+    headers:
+      X-Api-Key: "{{ prowlarr_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      name: "FlareSolverr"
+      implementation: "FlareSolverr"
+      configContract: "FlareSolverrSettings"
+      fields:
+        - name: "host"
+          value: "http://flaresolverr:8191/"
+        - name: "requestTimeout"
+          value: 60
+      tags: "{{ [prowlarr_flaresolverr_tag_id | int] }}"
+    status_code: [201]
+  register: prowlarr_flaresolverr_result
+  until: prowlarr_flaresolverr_result.status == 201
+  retries: 6
+  delay: 10
+  when:
+    - prowlarr_api_key is defined
+    - prowlarr_proxies.json | selectattr('name', 'equalto', 'FlareSolverr') | list | length == 0
+
+- name: Check if 1337x indexer exists in Prowlarr
+  uri:
+    url: "http://{{ ansible_host }}:9696/api/v1/indexer"
+    headers:
+      X-Api-Key: "{{ prowlarr_api_key }}"
+    method: GET
+  register: prowlarr_indexers
+  when: prowlarr_api_key is defined
+
+# Prowlarr test-searches the site on save; through FlareSolverr that takes ~15-30s
+- name: Add 1337x indexer to Prowlarr (via FlareSolverr)
+  uri:
+    url: "http://{{ ansible_host }}:9696/api/v1/indexer"
+    method: POST
+    headers:
+      X-Api-Key: "{{ prowlarr_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      name: "1337x"
+      definitionName: "1337x"
+      implementation: "Cardigann"
+      configContract: "CardigannSettings"
+      protocol: "torrent"
+      enable: true
+      appProfileId: 1
+      priority: 25
+      fields:
+        - name: "definitionFile"
+          value: "1337x"
+        - name: "baseUrl"
+          value: "https://1337x.to/"
+      tags: "{{ [prowlarr_flaresolverr_tag_id | int] }}"
+    status_code: [201]
+    timeout: 120
+  register: prowlarr_1337x_result
+  until: prowlarr_1337x_result.status == 201
+  retries: 3
+  delay: 15
+  when:
+    - prowlarr_api_key is defined
+    - prowlarr_indexers.json | selectattr('definitionName', 'equalto', '1337x') | list | length == 0
