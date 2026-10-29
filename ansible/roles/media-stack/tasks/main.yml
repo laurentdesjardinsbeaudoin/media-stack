@@ -23,6 +23,20 @@
 
 # The 1 TB media disk is mounted on the Proxmox host and shared in via
 # virtiofs (dir mapping "media-data"), so the VM disk can be snapshotted.
+# If virtiofsd on the host stops answering, anything touching the share hangs
+# unkillably (timeout can't help), so stat in the background and give up after 15s.
+- name: Check the media share is responding
+  shell: |
+    stat -t {{ media_share_path }} >/dev/null 2>&1 </dev/null &
+    pid=$!
+    for i in $(seq 1 15); do
+      kill -0 $pid 2>/dev/null || { wait $pid; exit $?; }
+      sleep 1
+    done
+    echo "{{ media_share_path }} is not responding; virtiofs share is hung. Stop and start the VM from Proxmox, then re-run." >&2
+    exit 1
+  changed_when: false
+
 - name: Mount media share from Proxmox host (virtiofs)
   mount:
     path: "{{ media_share_path }}"
