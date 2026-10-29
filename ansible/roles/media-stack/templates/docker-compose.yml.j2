@@ -132,6 +132,9 @@ services:
     environment:
       - TZ=America/New_York
       - VERSION=docker
+      # Lets clients on other subnets find the server over plain HTTP; LAN networks,
+      # secureConnections=Preferred and interface=ens18 are kept in Preferences.xml
+      - ADVERTISE_IP=http://{{ ansible_host }}:32400/
     volumes:
       - {{ appdata_dir }}/Plex-Media-Server:/config
       - {{ transcode_dir }}:/transcode

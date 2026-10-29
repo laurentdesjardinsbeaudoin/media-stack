@@ -133,6 +133,8 @@ Replace `ip` with your server's address.
 1. Claim the server with your Plex account.
 2. Add libraries pointing at `/data`.
 
+3. Settings → Network (show advanced): Secure connections **Preferred**, Preferred network interface **ens18**, LAN Networks `192.168.0.0/16,172.16.0.0/12,10.0.0.0/8`. `ADVERTISE_IP` in the compose file sets the custom server URL.
+4. Change these in the web UI, not by editing `Preferences.xml` as root — the file must stay owned by uid 1000 or Plex fails to start ("Failed to load preferences").
 #### **Portainer** (http://ip:9000)
 1. Create the admin account straight away — Portainer has full control of Docker on the host.
 
